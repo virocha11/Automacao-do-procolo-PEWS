@@ -15,3 +15,29 @@ Funções:
 - Intervenção e Tempo de Avaliação SSVV
 - Relatório de Avaliações do Paciente
 - Manual de uso do BPEWS
+
+Abaixo encontra-se a imagens do protótipo desse projeto elaborado no Figma. 
+
+![Tela de Login](images/prototipo 1.jped)
+
+![Tela Inicial do Pews apresenta o histórico geral de pacientes](images/prototipo 2.jped)
+
+![Tela de busca por paciente](images/prototipo 3.jped)
+
+![Tela 1 de Ajuda - Como Utilizar o Pews](images/prototipo 4.jped)
+
+![Tela 2 de Ajuda - Como Utilizar o Pews](images/prototipo 5.jped)
+
+![Tela 1 de Nova Avaliação](images/prototipo 6.jped)
+
+![Tela 2 de Nova Avaliação](images/prototipo 8.jped)
+
+![Tela de Avaliação Finalizada - Interveção](images/prototipo 9.jped)
+
+![Tela do Relatório do Paciente](images/prototipo 10.jped)
+
+
+
+
+
+
