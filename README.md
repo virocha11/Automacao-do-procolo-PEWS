@@ -18,23 +18,23 @@ Funções:
 
 Abaixo encontra-se a imagens do protótipo desse projeto elaborado no Figma. 
 
-![Tela de Login](./images/prototipo%201.jpeg)
+![Tela de Login](./images/prototipo%201.jpeg "FIGURA 1: Tela de Login]")
 
-![Tela Inicial do Pews apresenta o histórico geral de pacientes](./images/prototipo%202.jpeg)
+![Tela Inicial do Pews apresenta o histórico geral de pacientes](./images/prototipo%202.jpeg "FIGURA 2: Tela Inicial do Pews apresenta o histórico geral de pacientes")
 
-![Tela de busca por paciente](./images/prototipo%203.jpeg)
+![Tela de busca por paciente](./images/prototipo%203.jpeg "FIGURA 3: Tela de busca por paciente")
 
-![Tela 1 de Ajuda - Como Utilizar o Pews](./images/prototipo%204.jpeg)
+![Tela 1 de Ajuda - Como Utilizar o Pews](./images/prototipo%204.jpeg "FIGURA 4: Tela 1 de Ajuda - Como Utilizar o Pews")
 
-![Tela 2 de Ajuda - Como Utilizar o Pews](./images/prototipo%205.jpeg)
+![Tela 2 de Ajuda - Como Utilizar o Pews](./images/prototipo%205.jpeg "FIGURA 5: Tela 2 de Ajuda - Como Utilizar o Pews")
 
-![Tela 1 de Nova Avaliação](./images/prototipo%206.jpeg)
+![Tela 1 de Nova Avaliação](./images/prototipo%206.jpeg "FIGURA 6: Tela 1 de Nova Avaliação")
 
-![Tela 2 de Nova Avaliação](./images/prototipo%208.jpeg)
+![Tela 2 de Nova Avaliação](./images/prototipo%208.jpeg "FIGURA 7: Tela 2 de Nova Avaliação")
 
-![Tela de Avaliação Finalizada - Interveção](./images/prototipo%209.jpeg)
+![Tela de Avaliação Finalizada - Interveção](./images/prototipo%209.jpeg "FIGURA 8: Tela de Avaliação Finalizada - Interveção")
 
-![Tela do Relatório do Paciente](./images/prototipo%2010.jpeg)
+![Tela do Relatório do Paciente](./images/prototipo%2010.jpeg "FIGURA 9: Tela do Relatório do Paciente")
 
 
 
