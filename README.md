@@ -20,13 +20,13 @@ Abaixo encontra-se a imagens do protótipo desse projeto elaborado no Figma.
 
 ![Tela de Login](./images/prototipo%201.jpeg)
 
-![Tela Inicial do Pews apresenta o histórico geral de pacientes](./images/prototipo 2.jped)
+![Tela Inicial do Pews apresenta o histórico geral de pacientes](./images/prototipo%202.jpeg)
 
 ![Tela de busca por paciente](./images/prototipo%203.jpeg)
 
 ![Tela 1 de Ajuda - Como Utilizar o Pews](./images/prototipo%204.jpeg)
 
-![Tela 2 de Ajuda - Como Utilizar o Pews](./images/prototipo%205.jpeg
+![Tela 2 de Ajuda - Como Utilizar o Pews](./images/prototipo%205.jpeg)
 
 ![Tela 1 de Nova Avaliação](./images/prototipo%206.jpeg)
 
