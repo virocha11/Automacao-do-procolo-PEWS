@@ -1,4 +1,4 @@
-# Automacao-do-procolo-PEWS-backend-
+# Automacao-do-procolo-PEWS-
 Projeto acadêmico desenvolvido durante a disciplina de Projeto Integrador - UTFPR-CM
 
 o BPEWS é um protocolo que serve para identificar precocemente sinais de agravamento do quadro clínico de crianças hospitalizadas. 
