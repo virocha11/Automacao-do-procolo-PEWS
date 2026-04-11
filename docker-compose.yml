@@ -1,0 +1,46 @@
+services:
+  # BANCO DE DADOS
+  db:
+    image: mysql:8.0
+    env_file:
+      - ./backend/.env 
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d # O MySQL executa tudo o que estiver aqui na primeira vez
+
+  # BACKEND (Node.js + Express)
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASS: project_pews
+      DB_NAME: project_pews
+    depends_on:
+      - db
+
+  # FRONTEND (React)
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
