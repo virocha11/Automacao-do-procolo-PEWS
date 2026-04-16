@@ -1,9 +1,9 @@
 import express from "express";
-import userRoutes from "./routes/userRoutes";
+import rotasUsuario from "./routes/usuarioRoutes";
 
 const app = express();
 
 app.use(express.json());
-app.use(userRoutes);
+app.use(rotasUsuario);
 
 export default app;
