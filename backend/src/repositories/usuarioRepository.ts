@@ -32,6 +32,17 @@ export async function buscarUsuarioPorId(id: number): Promise<Usuario | null> {
   return repositorio.findOneBy({ id });
 }
 
+export async function buscarUsuarioPorEmailComSenha(
+  email: string
+): Promise<Usuario | null> {
+  const emailLimpo = email.trim();
+  return repositorio
+    .createQueryBuilder("usuario")
+    .addSelect("usuario.senha")
+    .where("usuario.email = :email", { email: emailLimpo })
+    .getOne();
+}
+
 export async function criarUsuario(dados: DadosCriarUsuario): Promise<Usuario> {
   const senhaHash = await bcrypt.hash(dados.senha, custoBcrypt);
   const novo = repositorio.create({
