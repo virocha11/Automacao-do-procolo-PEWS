@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { QueryFailedError } from "typeorm";
 import { FuncaoUsuario, Usuario } from "../entities/Usuario";
 import {
   buscarTodosUsuarios,
@@ -31,7 +30,7 @@ function funcaoValida(valor: unknown): valor is FuncaoUsuario {
 export async function listarUsuarios(req: Request, res: Response) {
   try {
     const usuarios = await buscarTodosUsuarios();
-    res.json(usuarios);
+    res.json(usuarios.map(jsonSemSenha));
   } catch {
     res.status(500).json({ erro: "Não foi possível listar os usuários." });
   }
@@ -86,7 +85,7 @@ export async function obterUsuarioPorId(req: Request, res: Response) {
       return res.status(404).json({ erro: "Usuário não encontrado." });
     }
 
-    res.json(usuario);
+    res.json(jsonSemSenha(usuario));
   } catch {
     res.status(500).json({ erro: "Não foi possível buscar o usuário." });
   }
@@ -147,6 +146,13 @@ export async function excluirUsuario(req: Request, res: Response) {
 
     if (!existe) {
       return res.status(404).json({ erro: "Usuário não encontrado." });
+    }
+
+    const autenticado = req.usuarioAutenticado;
+    if (autenticado && id === autenticado.id) {
+      return res.status(400).json({
+        erro: "Não é possível remover a própria conta por aqui.",
+      });
     }
 
     await removerUsuario(id);
