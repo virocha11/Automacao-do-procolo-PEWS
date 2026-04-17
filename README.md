@@ -3,7 +3,7 @@ Projeto acadêmico desenvolvido durante a disciplina de Projeto Integrador - UTF
 
 o BPEWS é um protocolo que serve para identificar precocemente sinais de agravamento do quadro clínico de crianças hospitalizadas. 
 
-Funções: 
+## Funções: 
 
 - Cadastro de profissionais 
 - Formulário da paciente (criança)
@@ -16,7 +16,28 @@ Funções:
 - Relatório de Avaliações do Paciente
 - Manual de uso do BPEWS
 
-Abaixo encontra-se a imagens do protótipo desse projeto elaborado no Figma. 
+
+## Tecnologias utilizadas
+
+- Frontend: (React / Vite)
+- Backend: (Node.js + Express)
+- Banco de dados: (MySQL)
+- ORM: typeORM
+- Docker + Docker Compose
+
+## Clonar o repositório
+
+git clone https://github.com/SEU_USUARIO/Automacao-do-procolo-PEWS.git
+cd Automacao-do-procolo-PEWS
+
+## Como rodar o projeto (ambiente de desenvolvimento)
+
+Antes de iniciar, você precisa ter instalado:
+
+- Docker Compose e executar o comando: "docker-compose up --build" para ativar os containers.
+- Executar o comando: "npm run dev" na pasta do frontend
+
+## Abaixo encontra-se a imagens do protótipo desse projeto elaborado no Figma. 
 
 ![Tela de Login](./images/prototipo%201.jpeg "FIGURA 1: Tela de Login]")
 
