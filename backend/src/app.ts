@@ -9,5 +9,4 @@ app.use(cors());
 app.use(express.json());
 app.use(rotasAutenticacao);
 app.use(rotasUsuario);
-
 export default app;
