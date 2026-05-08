@@ -6,6 +6,7 @@ import { useSessao } from "./contexts/SessaoContext";
 import { PaginaInicio } from "./pages/PaginaInicio";
 import { PaginaLogin } from "./pages/PaginaLogin";
 import { PaginaUsuarios } from "./pages/PaginaUsuarios";
+import { PaginaNovaAvaliacao } from "./pages/PaginaNovaAvaliacao";
 import { PaginaPacientes } from "./pages/PaginaPacientes";
 
 function RotaInicial() {
@@ -37,6 +38,7 @@ export default function App() {
         }
       >
         <Route path="/inicio" element={<PaginaInicio />} />
+        <Route path="/avaliacoes/nova" element={<PaginaNovaAvaliacao />} />
         <Route
           path="/cadastros/usuarios"
           element={
