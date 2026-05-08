@@ -1,6 +1,5 @@
 import type { Paciente } from "../types/paciente";
-
-const URL_BASE = "http://localhost:3000";
+import { urlBaseApi } from "./requisicoes";
 
 async function tratarResposta(resposta: Response) {
   if (!resposta.ok) {
@@ -22,8 +21,28 @@ async function tratarResposta(resposta: Response) {
   return resposta.json();
 }
 
-export async function apiListarPacientes(token: string) {
-  const resposta = await fetch(`${URL_BASE}/pacientes`, {
+export async function apiListarPacientes(token: string, nome?: string) {
+  const parametros = new URLSearchParams();
+
+  if (nome && nome.trim() !== "") {
+    parametros.set("nome", nome.trim());
+  }
+
+  const consulta = parametros.toString();
+  const resposta = await fetch(
+    `${urlBaseApi()}/pacientes${consulta ? `?${consulta}` : ""}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return tratarResposta(resposta) as Promise<Paciente[]>;
+}
+
+export async function apiListarTodosPacientes(token: string) {
+  const resposta = await fetch(`${urlBaseApi()}/pacientes`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -44,7 +63,7 @@ export async function apiCriarPaciente(
   token: string,
   corpo: CorpoCriarPaciente
 ) {
-  const resposta = await fetch(`${URL_BASE}/pacientes`, {
+  const resposta = await fetch(`${urlBaseApi()}/pacientes`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -61,7 +80,7 @@ export async function apiAtualizarPaciente(
   id: number,
   corpo: CorpoCriarPaciente
 ) {
-  const resposta = await fetch(`${URL_BASE}/pacientes/${id}`, {
+  const resposta = await fetch(`${urlBaseApi()}/pacientes/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -77,7 +96,7 @@ export async function apiExcluirPaciente(
   token: string,
   id: number
 ) {
-  const resposta = await fetch(`${URL_BASE}/pacientes/${id}`, {
+  const resposta = await fetch(`${urlBaseApi()}/pacientes/${id}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
