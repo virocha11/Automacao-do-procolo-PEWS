@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 import dotenv from "dotenv";
 import { Usuario } from "../entities/Usuario";
+import { Avaliacao } from "../entities/Avaliacao"; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
-  entities: [Usuario],
+  entities: [Usuario, Avaliacao],
   synchronize: true,
   logging: false
 });
