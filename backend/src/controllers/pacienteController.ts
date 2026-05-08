@@ -38,26 +38,32 @@ export async function cadastrarPaciente(req: Request, res: Response) {
       });
     }
 
-    let data: Date | null = null;
+    if (!dataNascimento) {
+      return res.status(400).json({
+        erro: "Data de nascimento é obrigatória.",
+      });
+    }
 
-    if (dataNascimento) {
-      const convertida = new Date(dataNascimento);
+    if (!nomeResponsavelLegal || !telefoneResponsavelLegal || !endereco) {
+      return res.status(400).json({
+        erro: "Responsável, telefone e endereço são obrigatórios.",
+      });
+    }
 
-      if (Number.isNaN(convertida.getTime())) {
-        return res.status(400).json({
-          erro: "Data inválida.",
-        });
-      }
+    const data = new Date(dataNascimento);
 
-      data = convertida;
+    if (Number.isNaN(data.getTime())) {
+      return res.status(400).json({
+        erro: "Data inválida.",
+      });
     }
 
     const paciente = await criarPaciente({
       nome,
       dataNascimento: data,
       nomeResponsavelLegal,
-      telefoneResponsavelLegal: telefoneResponsavelLegal ?? null,
-      endereco: endereco ?? null,
+      telefoneResponsavelLegal,
+      endereco,
     });
 
     res.status(201).json(paciente);

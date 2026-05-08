@@ -6,18 +6,18 @@ const repositorio = AppDataSource.getRepository(Paciente);
 
 export type DadosCriarPaciente = {
   nome: string;
-  dataNascimento: Date | null;
+  dataNascimento: Date;
   nomeResponsavelLegal: string;
-  telefoneResponsavelLegal: string | null;
-  endereco: string | null;
+  telefoneResponsavelLegal: string;
+  endereco: string;
 };
 
 export type DadosAtualizarPaciente = {
   nome?: string;
-  dataNascimento?: Date | null;
+  dataNascimento?: Date;
   nomeResponsavelLegal?: string;
-  telefoneResponsavelLegal?: string | null;
-  endereco?: string | null;
+  telefoneResponsavelLegal?: string;
+  endereco?: string;
 };
 
 export async function buscarTodosPacientes(
