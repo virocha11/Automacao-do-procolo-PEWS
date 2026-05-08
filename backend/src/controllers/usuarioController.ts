@@ -71,7 +71,8 @@ export async function cadastrarUsuario(req: Request, res: Response) {
     });
 
     res.status(201).json(jsonSemSenha(usuario));
-  } catch {
+  } catch (erro) {
+    console.error(erro);
     res.status(500).json({ erro: "Não foi possível cadastrar o usuário." });
   }
 }
