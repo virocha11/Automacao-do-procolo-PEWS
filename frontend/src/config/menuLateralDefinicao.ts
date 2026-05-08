@@ -22,13 +22,20 @@ export const arvoreMenuLateral: NoMenuLateral[] = [
     tipo: "submenu",
     chave: "cadastros",
     rotulo: "Cadastros",
-    podeVer: (f) => f === CODIGO_FUNCAO_ADMINISTRADOR,
+    podeVer: () => true,
     filhos: [
+      {
+        tipo: "item",
+        chave: "cadastro-pacientes",
+        rota: "/cadastros/pacientes",
+        rotulo: "Pacientes",
+        podeVer: () => true,
+      },
       {
         tipo: "item",
         chave: "cadastro-usuarios",
         rota: "/cadastros/usuarios",
-        rotulo: "Usuário",
+        rotulo: "Usuários",
         podeVer: (f) => f === CODIGO_FUNCAO_ADMINISTRADOR,
       },
     ],
@@ -40,27 +47,35 @@ export function filtrarMenuPorFuncao(
   funcaoUsuario: number
 ): NoMenuLateral[] {
   const saida: NoMenuLateral[] = [];
+
   for (const no of nos) {
     if (!no.podeVer(funcaoUsuario)) {
       continue;
     }
+
     if (no.tipo === "item") {
       saida.push(no);
     } else {
       const filhos = filtrarMenuPorFuncao(no.filhos, funcaoUsuario);
+
       if (filhos.length > 0) {
         saida.push({ ...no, filhos });
       }
     }
   }
+
   return saida;
 }
 
 function paraItensAntd(nos: NoMenuLateral[]): MenuProps["items"] {
   return nos.map((no) => {
     if (no.tipo === "item") {
-      return { key: no.rota, label: no.rotulo };
+      return {
+        key: no.rota,
+        label: no.rotulo,
+      };
     }
+
     return {
       key: `submenu:${no.chave}`,
       label: no.rotulo,
@@ -72,9 +87,13 @@ function paraItensAntd(nos: NoMenuLateral[]): MenuProps["items"] {
 export function itensMenuAntdParaUsuario(
   funcaoUsuario: number
 ): MenuProps["items"] {
-  return paraItensAntd(filtrarMenuPorFuncao(arvoreMenuLateral, funcaoUsuario));
+  return paraItensAntd(
+    filtrarMenuPorFuncao(arvoreMenuLateral, funcaoUsuario)
+  );
 }
 
-export function usuarioPossuiItensNoMenuLateral(funcaoUsuario: number): boolean {
+export function usuarioPossuiItensNoMenuLateral(
+  funcaoUsuario: number
+): boolean {
   return filtrarMenuPorFuncao(arvoreMenuLateral, funcaoUsuario).length > 0;
 }
