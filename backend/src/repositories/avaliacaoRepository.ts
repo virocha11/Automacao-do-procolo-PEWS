@@ -42,7 +42,7 @@ export async function buscarTodasAvaliacoes(
   return repositorio.find({
     where: nomePaciente
       ? {
-          nomePaciente: Like(`%${nomePaciente}%`),
+          nomePaciente: Like(`${nomePaciente}%`),
         }
       : undefined,
     order: {

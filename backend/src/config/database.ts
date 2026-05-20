@@ -2,9 +2,8 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 import dotenv from "dotenv";
 import { Usuario } from "../entities/Usuario";
-import { Avaliacao } from "../entities/Avaliacao"; // eslint-disable-line @typescript-eslint/no-unused-vars
-import { Usuario } from "../entities/Usuario"; // eslint-disable-line @typescript-eslint/no-unused-vars
-import { Paciente } from "../entities/Paciente"; // eslint-disable-line @typescript-eslint/no-unused-vars
+import { Avaliacao } from "../entities/Avaliacao";
+import { Paciente } from "../entities/Paciente";
 
 dotenv.config();
 
