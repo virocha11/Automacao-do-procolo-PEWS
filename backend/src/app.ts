@@ -12,8 +12,6 @@ app.use(express.json());
 app.use(rotasAutenticacao);
 app.use(rotasUsuario);
 app.use(rotasAvaliacao);
-
-export default app;
 app.use(rotasPaciente);
 
 export default app;
