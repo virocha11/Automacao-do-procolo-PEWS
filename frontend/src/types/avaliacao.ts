@@ -1,5 +1,6 @@
 export type CorpoCriarAvaliacao = {
   nomePaciente?: string;
+  pacienteId?: number;
   avaliadorNome?: string;
   faixaEtaria?: string;
   leito?: string;

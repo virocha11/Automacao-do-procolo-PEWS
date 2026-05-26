@@ -194,6 +194,21 @@ export function PaginaInicio() {
             dataSource={avaliacoes}
             pagination={{ pageSize: 12 }}
             bordered={false}
+            rowClassName="linha-clicavel"
+            onRow={(registro) => ({
+              onClick: () => {
+                if (registro.pacienteId) {
+                  navigate(`/historico/paciente/${registro.pacienteId}`);
+                  return;
+                }
+
+                const nome = registro.nomePaciente?.trim();
+
+                if (nome) {
+                  navigate(`/historico/paciente/${encodeURIComponent(nome)}`);
+                }
+              },
+            })}
             style={{ width: "100%" }}
           />
         </Space>

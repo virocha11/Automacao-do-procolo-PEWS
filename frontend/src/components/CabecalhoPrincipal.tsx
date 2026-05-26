@@ -77,10 +77,7 @@ export function CabecalhoPrincipal({
           {rotuloUsuario}
         </Text>
       </div>
-      <Button
-        type="text"
-        onClick={() => navigate("/inicio")}
-        aria-label="Ir para a página inicial"
+      <Text
         style={{
           color: "#fff",
           margin: 0,
@@ -95,7 +92,7 @@ export function CabecalhoPrincipal({
         }}
       >
         PEWS
-      </Button>
+      </Text>
       <div style={{ justifySelf: "end" }}>
         <Button
           type="text"

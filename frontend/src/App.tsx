@@ -8,6 +8,7 @@ import { PaginaLogin } from "./pages/PaginaLogin";
 import { PaginaUsuarios } from "./pages/PaginaUsuarios";
 import { PaginaNovaAvaliacao } from "./pages/PaginaNovaAvaliacao";
 import { PaginaPacientes } from "./pages/PaginaPacientes";
+import { PaginaHistoricoPaciente } from "./pages/PaginaHistoricoPaciente";
 
 function RotaInicial() {
   const { token } = useSessao();
@@ -39,6 +40,10 @@ export default function App() {
       >
         <Route path="/inicio" element={<PaginaInicio />} />
         <Route path="/avaliacoes/nova" element={<PaginaNovaAvaliacao />} />
+        <Route
+          path="/historico/paciente/:pacienteId"
+          element={<PaginaHistoricoPaciente />}
+        />
         <Route
           path="/cadastros/usuarios"
           element={

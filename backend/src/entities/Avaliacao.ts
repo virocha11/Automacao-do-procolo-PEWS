@@ -8,6 +8,9 @@ export class Avaliacao {
   @Column({ type: "varchar", nullable: true })
   nomePaciente!: string | null;
 
+  @Column({ type: "int", nullable: true })
+  pacienteId!: number | null;
+
   @Column({ type: "varchar", nullable: true })
   avaliadorNome!: string | null;
 

@@ -29,12 +29,21 @@ export async function apiCriarAvaliacao(
 
 export async function apiListarAvaliacoes(
   token: string,
-  nomePaciente?: string
+  nomePaciente?: string,
+  opcoes?: { exato?: boolean; pacienteId?: number }
 ) {
   const parametros = new URLSearchParams();
 
   if (nomePaciente && nomePaciente.trim() !== "") {
     parametros.set("nomePaciente", nomePaciente.trim());
+  }
+
+  if (opcoes?.exato) {
+    parametros.set("exato", "true");
+  }
+
+  if (opcoes?.pacienteId) {
+    parametros.set("pacienteId", String(opcoes.pacienteId));
   }
 
   const consulta = parametros.toString();
