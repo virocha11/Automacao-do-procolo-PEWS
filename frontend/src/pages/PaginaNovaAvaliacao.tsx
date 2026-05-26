@@ -488,6 +488,8 @@ export function PaginaNovaAvaliacao() {
       "avaliacaoRespiratoria",
       "avaliacaoCardiovascular",
       "avaliacaoNeurologica",
+      "frequenciaRespiratoria",
+      "frequenciaCardiaca",
     ]);
 
     const valores = form.getFieldsValue(true);
@@ -937,6 +939,12 @@ export function PaginaNovaAvaliacao() {
                 <Form.Item
                   name="frequenciaRespiratoria"
                   label="Frequência Respiratória (ipm)"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Informe a frequência respiratória.",
+                    },
+                  ]}
                   style={{ margin: 0 }}
                 >
                   <InputNumber min={0} style={{ width: 44 }} />
@@ -960,6 +968,12 @@ export function PaginaNovaAvaliacao() {
                 <Form.Item
                   name="frequenciaCardiaca"
                   label="Frequência Cardíaca (bpm)"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Informe a frequência cardíaca.",
+                    },
+                  ]}
                   style={{ margin: 0 }}
                 >
                   <InputNumber min={0} style={{ width: 44 }} />
