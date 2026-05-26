@@ -12,7 +12,7 @@ import {
 } from "antd";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { apiCriarAvaliacao } from "../api/avaliacaoServico";
 import {
@@ -31,7 +31,7 @@ type ValoresFormulario = {
   faixaEtaria?: string;
   leito?: string;
   diagnostico?: string;
-  dih?: string;
+  dih?: number;
   avaliacaoRespiratoria?: string;
   pontuacaoRespiratoria?: number;
   avaliacaoCardiovascular?: string;
@@ -60,14 +60,34 @@ type OpcaoPaciente = {
   faixaEtaria: string;
 };
 
+type EstadoNavegacaoAvaliacao = {
+  nomePaciente?: string;
+  faixaEtaria?: string;
+};
+
 const verde = "#1f6b3a";
 const verdeClaro = "#88a98f";
+
+const etapasAvaliacao = [1, 2, 3] as const;
 
 const opcoesFaixaEtaria = [
   { value: "0 a 11 meses", label: "0 a 11 meses" },
   { value: "1 a 4 anos", label: "1 a 4 anos" },
   { value: "5 a 12 anos", label: "5 a 12 anos" },
   { value: "13 ou mais anos", label: "13 ou mais anos" },
+];
+
+const opcoesLeito = [
+  { value: "LEITO_01", label: "Leito 01" },
+  { value: "LEITO_02", label: "Leito 02" },
+  { value: "LEITO_03", label: "Leito 03" },
+  { value: "LEITO_04", label: "Leito 04" },
+  { value: "LEITO_05", label: "Leito 05" },
+  { value: "LEITO_06", label: "Leito 06" },
+  { value: "LEITO_07", label: "Leito 07" },
+  { value: "LEITO_08", label: "Leito 08" },
+  { value: "LEITO_09", label: "Leito 09" },
+  { value: "LEITO_10", label: "Leito 10" },
 ];
 
 const opcoesAvaliacaoRespiratoria: OpcaoPontuada[] = [
@@ -155,6 +175,23 @@ const botaoPrincipal: CSSProperties = {
   background: verde,
   boxShadow: "0 2px 4px rgba(0, 0, 0, 0.24)",
   fontSize: 20,
+};
+
+const botaoVoltar: CSSProperties = {
+  ...botaoPrincipal,
+  justifySelf: "start",
+};
+
+const navegacaoFormulario: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr auto 1fr",
+  alignItems: "center",
+  marginTop: 20,
+};
+
+const painelEtapaFormulario: CSSProperties = {
+  ...painel,
+  minHeight: 360,
 };
 
 function texto(valor: string | undefined) {
@@ -249,9 +286,11 @@ function obterIntervencaoSugerida(pontuacao: number) {
 export function PaginaNovaAvaliacao() {
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const location = useLocation();
   const [parametrosBusca] = useSearchParams();
   const { token } = useSessao();
   const pacienteIdInicial = Number(parametrosBusca.get("pacienteId"));
+  const estadoNavegacao = location.state as EstadoNavegacaoAvaliacao | null;
 
   const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
   const [gravando, setGravando] = useState(false);
@@ -317,6 +356,25 @@ export function PaginaNovaAvaliacao() {
     },
     [form]
   );
+
+  useEffect(() => {
+    const proximoPacienteId = Number(parametrosBusca.get("pacienteId"));
+
+    if (Number.isFinite(proximoPacienteId) && proximoPacienteId > 0) {
+      setPacienteFixoId(proximoPacienteId);
+    }
+  }, [parametrosBusca]);
+
+  useEffect(() => {
+    if (pacienteFixoId || !estadoNavegacao) {
+      return;
+    }
+
+    form.setFieldsValue({
+      nomePaciente: estadoNavegacao.nomePaciente,
+      faixaEtaria: estadoNavegacao.faixaEtaria,
+    });
+  }, [estadoNavegacao, form, pacienteFixoId]);
 
   useEffect(() => {
     if (!token || !pacienteFixoId) {
@@ -430,6 +488,8 @@ export function PaginaNovaAvaliacao() {
       "avaliacaoRespiratoria",
       "avaliacaoCardiovascular",
       "avaliacaoNeurologica",
+      "frequenciaRespiratoria",
+      "frequenciaCardiaca",
     ]);
 
     const valores = form.getFieldsValue(true);
@@ -459,7 +519,10 @@ export function PaginaNovaAvaliacao() {
         faixaEtaria: texto(valores.faixaEtaria),
         leito: texto(valores.leito),
         diagnostico: texto(valores.diagnostico),
-        dih: texto(valores.dih),
+        dih:
+          valores.dih !== undefined && valores.dih !== null
+            ? String(valores.dih)
+            : undefined,
         avaliacaoRespiratoria: texto(valores.avaliacaoRespiratoria),
         pontuacaoRespiratoria: valores.pontuacaoRespiratoria ?? 0,
         avaliacaoCardiovascular: texto(valores.avaliacaoCardiovascular),
@@ -511,6 +574,51 @@ export function PaginaNovaAvaliacao() {
     setEmesePontuada(false);
     setNebulizacaoPontuada(false);
     setEtapa(1);
+  }
+
+  function renderNavegacaoEtapas() {
+    return (
+      <nav
+        aria-label="Etapas da avaliação"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: 8,
+          minHeight: 28,
+        }}
+      >
+        {etapasAvaliacao.map((numeroEtapa) => {
+          const ativa = numeroEtapa === etapa;
+          const desabilitada = numeroEtapa > etapa;
+
+          return (
+            <button
+              key={numeroEtapa}
+              type="button"
+              aria-current={ativa ? "step" : undefined}
+              disabled={desabilitada}
+              onClick={() => setEtapa(numeroEtapa)}
+              style={{
+                width: 28,
+                height: 28,
+                border: 0,
+                borderRadius: ativa ? 6 : 0,
+                background: ativa ? verde : "transparent",
+                color: ativa ? "#fff" : "#111",
+                fontSize: 14,
+                lineHeight: "28px",
+                padding: 0,
+                cursor: desabilitada ? "default" : "pointer",
+                opacity: desabilitada && !ativa ? 0.45 : 1,
+              }}
+            >
+              {numeroEtapa}
+            </button>
+          );
+        })}
+      </nav>
+    );
   }
 
   return (
@@ -567,7 +675,7 @@ export function PaginaNovaAvaliacao() {
               Formulário de Nova Avaliação
             </Title>
 
-            <div style={painel}>
+            <div style={painelEtapaFormulario}>
               <div
                 style={{
                   display: "grid",
@@ -575,7 +683,23 @@ export function PaginaNovaAvaliacao() {
                   gap: "18px 76px",
                 }}
               >
-                <Form.Item name="nomePaciente" label="Nome do Paciente">
+                <Form.Item
+                  name="nomePaciente"
+                  label="Nome do Paciente"
+                  rules={[
+                    {
+                      validator: async () => {
+                        const pacienteId = form.getFieldValue("pacienteId");
+
+                        if (pacienteId) {
+                          return;
+                        }
+
+                        throw new Error("Selecione um paciente cadastrado.");
+                      },
+                    },
+                  ]}
+                >
                   <AutoComplete
                     size="large"
                     options={opcoesPacientes}
@@ -584,9 +708,10 @@ export function PaginaNovaAvaliacao() {
                       form.setFieldsValue({
                         pacienteId: opcao.pacienteId,
                         nomePaciente: opcao.value,
-                        faixaEtaria: opcao.faixaEtaria || undefined,
-                      });
-                    }}
+                          faixaEtaria: opcao.faixaEtaria || undefined,
+                        });
+                        form.setFields([{ name: "nomePaciente", errors: [] }]);
+                      }}
                     onChange={(valor) => {
                       if (!pacienteFixoId) {
                         form.setFieldsValue({
@@ -596,9 +721,7 @@ export function PaginaNovaAvaliacao() {
                       }
                     }}
                     placeholder="Digite o nome do paciente"
-                    notFoundContent={
-                      buscandoPacientes ? "Buscando..." : null
-                    }
+                    notFoundContent={buscandoPacientes ? "Buscando..." : null}
                     filterOption={false}
                     allowClear
                     disabled={!!pacienteFixoId || carregandoPacienteInicial}
@@ -619,36 +742,54 @@ export function PaginaNovaAvaliacao() {
                 </Form.Item>
 
                 <Form.Item name="leito" label="Leito">
+                  <Select
+                    size="large"
+                    placeholder="Selecione"
+                    options={opcoesLeito}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="diagnostico"
+                  label="Diagnóstico"
+                  rules={[
+                    {
+                      required: true,
+                      whitespace: true,
+                      message: "Informe o diagnóstico.",
+                    },
+                  ]}
+                >
                   <Input size="large" />
                 </Form.Item>
 
-                <Form.Item name="diagnostico" label="Diagnóstico">
-                  <Input size="large" />
-                </Form.Item>
-
-                <Form.Item name="dih" label="DIH">
-                  <Input size="large" />
+                <Form.Item
+                  name="dih"
+                  label="DIH"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Informe os dias de internação hospitalar.",
+                    },
+                  ]}
+                >
+                  <InputNumber min={0} precision={0} size="large" />
                 </Form.Item>
               </div>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: 80,
-              }}
-            >
+            <div style={navegacaoFormulario}>
               <Button
                 type="primary"
-                style={botaoPrincipal}
+                style={botaoVoltar}
                 onClick={() => navigate("/inicio")}
               >
                 Voltar
               </Button>
+              {renderNavegacaoEtapas()}
               <Button
                 type="primary"
-                style={botaoPrincipal}
+                style={{ ...botaoPrincipal, justifySelf: "end" }}
                 onClick={() => void avancarPrimeiraEtapa()}
               >
                 Avançar
@@ -666,7 +807,9 @@ export function PaginaNovaAvaliacao() {
               Formulário de Nova Avaliação
             </Title>
 
-            <div style={{ ...painel, width: "min(100%, 1028px)" }}>
+            <div
+              style={{ ...painelEtapaFormulario, width: "min(100%, 1028px)" }}
+            >
               <div
                 style={{
                   display: "grid",
@@ -787,7 +930,8 @@ export function PaginaNovaAvaliacao() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "250px 1fr",
+                  gridTemplateColumns: "250px minmax(0, 1fr) 120px",
+                  alignItems: "center",
                   gap: "18px 80px",
                   marginTop: 18,
                 }}
@@ -795,6 +939,12 @@ export function PaginaNovaAvaliacao() {
                 <Form.Item
                   name="frequenciaRespiratoria"
                   label="Frequência Respiratória (ipm)"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Informe a frequência respiratória.",
+                    },
+                  ]}
                   style={{ margin: 0 }}
                 >
                   <InputNumber min={0} style={{ width: 44 }} />
@@ -818,6 +968,12 @@ export function PaginaNovaAvaliacao() {
                 <Form.Item
                   name="frequenciaCardiaca"
                   label="Frequência Cardíaca (bpm)"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Informe a frequência cardíaca.",
+                    },
+                  ]}
                   style={{ margin: 0 }}
                 >
                   <InputNumber min={0} style={{ width: 44 }} />
@@ -842,30 +998,30 @@ export function PaginaNovaAvaliacao() {
                   name="vigilia"
                   label="Vigília"
                   valuePropName="checked"
-                  style={{ margin: 0 }}
+                  style={{
+                    gridColumn: 3,
+                    gridRow: "1 / 3",
+                    justifySelf: "center",
+                    margin: 0,
+                  }}
                 >
                   <Switch />
                 </Form.Item>
               </div>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: 20,
-              }}
-            >
+            <div style={navegacaoFormulario}>
               <Button
                 type="primary"
-                style={botaoPrincipal}
+                style={botaoVoltar}
                 onClick={() => setEtapa(1)}
               >
                 Voltar
               </Button>
+              {renderNavegacaoEtapas()}
               <Button
                 type="primary"
-                style={botaoPrincipal}
+                style={{ ...botaoPrincipal, justifySelf: "end" }}
                 loading={gravando}
                 onClick={() => void avancarSegundaEtapa()}
               >
@@ -934,7 +1090,7 @@ export function PaginaNovaAvaliacao() {
             >
               <Button
                 type="primary"
-                style={botaoPrincipal}
+                style={botaoVoltar}
                 onClick={() => setEtapa(2)}
               >
                 Voltar
