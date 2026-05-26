@@ -31,7 +31,7 @@ type ValoresFormulario = {
   faixaEtaria?: string;
   leito?: string;
   diagnostico?: string;
-  dih?: string;
+  dih?: number;
   avaliacaoRespiratoria?: string;
   pontuacaoRespiratoria?: number;
   avaliacaoCardiovascular?: string;
@@ -75,6 +75,19 @@ const opcoesFaixaEtaria = [
   { value: "1 a 4 anos", label: "1 a 4 anos" },
   { value: "5 a 12 anos", label: "5 a 12 anos" },
   { value: "13 ou mais anos", label: "13 ou mais anos" },
+];
+
+const opcoesLeito = [
+  { value: "LEITO_01", label: "Leito 01" },
+  { value: "LEITO_02", label: "Leito 02" },
+  { value: "LEITO_03", label: "Leito 03" },
+  { value: "LEITO_04", label: "Leito 04" },
+  { value: "LEITO_05", label: "Leito 05" },
+  { value: "LEITO_06", label: "Leito 06" },
+  { value: "LEITO_07", label: "Leito 07" },
+  { value: "LEITO_08", label: "Leito 08" },
+  { value: "LEITO_09", label: "Leito 09" },
+  { value: "LEITO_10", label: "Leito 10" },
 ];
 
 const opcoesAvaliacaoRespiratoria: OpcaoPontuada[] = [
@@ -504,7 +517,10 @@ export function PaginaNovaAvaliacao() {
         faixaEtaria: texto(valores.faixaEtaria),
         leito: texto(valores.leito),
         diagnostico: texto(valores.diagnostico),
-        dih: texto(valores.dih),
+        dih:
+          valores.dih !== undefined && valores.dih !== null
+            ? String(valores.dih)
+            : undefined,
         avaliacaoRespiratoria: texto(valores.avaliacaoRespiratoria),
         pontuacaoRespiratoria: valores.pontuacaoRespiratoria ?? 0,
         avaliacaoCardiovascular: texto(valores.avaliacaoCardiovascular),
@@ -724,15 +740,38 @@ export function PaginaNovaAvaliacao() {
                 </Form.Item>
 
                 <Form.Item name="leito" label="Leito">
+                  <Select
+                    size="large"
+                    placeholder="Selecione"
+                    options={opcoesLeito}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="diagnostico"
+                  label="Diagnóstico"
+                  rules={[
+                    {
+                      required: true,
+                      whitespace: true,
+                      message: "Informe o diagnóstico.",
+                    },
+                  ]}
+                >
                   <Input size="large" />
                 </Form.Item>
 
-                <Form.Item name="diagnostico" label="Diagnóstico">
-                  <Input size="large" />
-                </Form.Item>
-
-                <Form.Item name="dih" label="DIH">
-                  <Input size="large" />
+                <Form.Item
+                  name="dih"
+                  label="DIH"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Informe os dias de internação hospitalar.",
+                    },
+                  ]}
+                >
+                  <InputNumber min={0} precision={0} size="large" />
                 </Form.Item>
               </div>
             </div>
