@@ -19,7 +19,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { apiListarAvaliacoes } from "../api/avaliacaoServico";
-import { apiBuscarPacientePorId } from "../api/pacienteServico";
+import {
+  apiBuscarPacientePorId,
+  apiListarPacientes,
+} from "../api/pacienteServico";
 import { useSessao } from "../contexts/SessaoContext";
 import type { Avaliacao } from "../types/avaliacao";
 import type { Paciente } from "../types/paciente";
@@ -80,6 +83,14 @@ function ordenarPorMaisRecente(avaliacoes: Avaliacao[]) {
   });
 }
 
+function nomesIguais(a: string, b: string) {
+  return (
+    a.trim().localeCompare(b.trim(), "pt-BR", {
+      sensitivity: "base",
+    }) === 0
+  );
+}
+
 export function PaginaHistoricoPaciente() {
   const { message } = App.useApp();
   const navigate = useNavigate();
@@ -116,6 +127,15 @@ export function PaginaHistoricoPaciente() {
         exato: true,
       });
       setAvaliacoes(ordenarPorMaisRecente(dados));
+
+      const pacientes = await apiListarPacientes(token, nomeLegado);
+      const pacienteEncontrado = pacientes.find((item) =>
+        nomesIguais(item.nome, nomeLegado)
+      );
+
+      if (pacienteEncontrado) {
+        setPaciente(pacienteEncontrado);
+      }
     } catch (e) {
       message.error(
         e instanceof Error
@@ -147,12 +167,19 @@ export function PaginaHistoricoPaciente() {
     paciente?.nome ?? avaliacaoMaisRecente?.nomePaciente ?? nomeLegado;
 
   function navegarParaNovaAvaliacao() {
-    if (rotaPorId) {
-      navigate(`/avaliacoes/nova?pacienteId=${idPaciente}`);
+    const idParaPreencher = rotaPorId ? idPaciente : paciente?.id;
+
+    if (idParaPreencher) {
+      navigate(`/avaliacoes/nova?pacienteId=${idParaPreencher}`);
       return;
     }
 
-    navigate("/avaliacoes/nova");
+    navigate("/avaliacoes/nova", {
+      state: {
+        nomePaciente,
+        faixaEtaria: avaliacaoMaisRecente?.faixaEtaria,
+      },
+    });
   }
 
   const itensCollapse = avaliacoes.map((avaliacao) => {
