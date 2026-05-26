@@ -25,6 +25,12 @@ function numeroOuNulo(valor: unknown): number | null {
   return Number.isFinite(numero) ? numero : null;
 }
 
+function numeroPositivoOuNulo(valor: unknown): number | null {
+  const numero = numeroOuNulo(valor);
+
+  return numero && numero > 0 ? numero : null;
+}
+
 function pontuacao(valor: unknown): number {
   const numero = Number(valor);
 
@@ -38,7 +44,13 @@ function booleano(valor: unknown): boolean {
 export async function listarAvaliacoes(req: Request, res: Response) {
   try {
     const nomePaciente = textoOuNulo(req.query.nomePaciente);
-    const avaliacoes = await buscarTodasAvaliacoes(nomePaciente ?? undefined);
+    const buscaExata = req.query.exato === "true";
+    const pacienteId = numeroPositivoOuNulo(req.query.pacienteId);
+    const avaliacoes = await buscarTodasAvaliacoes(
+      nomePaciente ?? undefined,
+      buscaExata,
+      pacienteId ?? undefined
+    );
 
     res.json(avaliacoes);
   } catch (erro) {
@@ -53,6 +65,7 @@ export async function cadastrarAvaliacao(req: Request, res: Response) {
   try {
     const avaliacao = await criarAvaliacao({
       nomePaciente: textoOuNulo(req.body.nomePaciente),
+      pacienteId: numeroPositivoOuNulo(req.body.pacienteId),
       avaliadorNome: req.usuarioAutenticado?.nome ?? null,
       faixaEtaria: textoOuNulo(req.body.faixaEtaria),
       leito: textoOuNulo(req.body.leito),

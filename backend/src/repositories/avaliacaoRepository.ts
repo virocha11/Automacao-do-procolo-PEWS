@@ -6,6 +6,7 @@ const repositorio = AppDataSource.getRepository(Avaliacao);
 
 export type DadosCriarAvaliacao = {
   nomePaciente: string | null;
+  pacienteId: number | null;
   avaliadorNome: string | null;
   faixaEtaria: string | null;
   leito: string | null;
@@ -37,14 +38,23 @@ export async function criarAvaliacao(
 }
 
 export async function buscarTodasAvaliacoes(
-  nomePaciente?: string
+  nomePaciente?: string,
+  buscaExata = false,
+  pacienteId?: number
 ): Promise<Avaliacao[]> {
+  const filtros = [
+    ...(pacienteId ? [{ pacienteId }] : []),
+    ...(nomePaciente
+      ? [
+          {
+            nomePaciente: buscaExata ? nomePaciente : Like(`${nomePaciente}%`),
+          },
+        ]
+      : []),
+  ];
+
   return repositorio.find({
-    where: nomePaciente
-      ? {
-          nomePaciente: Like(`${nomePaciente}%`),
-        }
-      : undefined,
+    where: filtros.length ? filtros : undefined,
     order: {
       criadoEm: "DESC",
     },

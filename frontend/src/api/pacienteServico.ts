@@ -51,6 +51,16 @@ export async function apiListarTodosPacientes(token: string) {
   return tratarResposta(resposta) as Promise<Paciente[]>;
 }
 
+export async function apiBuscarPacientePorId(token: string, id: number) {
+  const resposta = await fetch(`${urlBaseApi()}/pacientes/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return tratarResposta(resposta) as Promise<Paciente>;
+}
+
 export type CorpoCriarPaciente = {
   nome: string;
   dataNascimento: string;

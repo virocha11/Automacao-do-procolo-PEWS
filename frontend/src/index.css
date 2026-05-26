@@ -18,3 +18,11 @@ body {
 #root {
   min-height: 100vh;
 }
+
+.linha-clicavel {
+  cursor: pointer;
+}
+
+.linha-clicavel:hover > td {
+  background: #f0f7f2 !important;
+}

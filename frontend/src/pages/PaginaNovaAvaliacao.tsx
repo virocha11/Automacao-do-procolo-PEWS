@@ -11,17 +11,22 @@ import {
   Typography,
 } from "antd";
 import type { CSSProperties } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { apiCriarAvaliacao } from "../api/avaliacaoServico";
-import { apiListarPacientes } from "../api/pacienteServico";
+import {
+  apiBuscarPacientePorId,
+  apiListarPacientes,
+} from "../api/pacienteServico";
 import { useSessao } from "../contexts/SessaoContext";
 import type { CorpoCriarAvaliacao } from "../types/avaliacao";
+import type { Paciente } from "../types/paciente";
 
 const { Title } = Typography;
 
 type ValoresFormulario = {
+  pacienteId?: number;
   nomePaciente?: string;
   faixaEtaria?: string;
   leito?: string;
@@ -46,6 +51,13 @@ type OpcaoPontuada = {
   value: string;
   label: string;
   pontuacao: number;
+};
+
+type OpcaoPaciente = {
+  value: string;
+  label: string;
+  pacienteId: number;
+  faixaEtaria: string;
 };
 
 const verde = "#1f6b3a";
@@ -151,11 +163,48 @@ function texto(valor: string | undefined) {
   return limpo === "" ? undefined : limpo;
 }
 
-function ordenarNomesPacientes(nomes: string[]) {
-  return [...new Set(nomes)]
-    .filter((nome) => nome.trim() !== "")
+function calcularFaixaEtaria(dataNascimento: string | null | undefined) {
+  if (!dataNascimento) {
+    return undefined;
+  }
+
+  const nascimento = new Date(`${dataNascimento}T00:00:00`);
+
+  if (Number.isNaN(nascimento.getTime())) {
+    return undefined;
+  }
+
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nascimento.getFullYear();
+  const aindaNaoFezAniversario =
+    hoje.getMonth() < nascimento.getMonth() ||
+    (hoje.getMonth() === nascimento.getMonth() &&
+      hoje.getDate() < nascimento.getDate());
+
+  if (aindaNaoFezAniversario) {
+    idade -= 1;
+  }
+
+  if (idade < 1) {
+    return "0 a 11 meses";
+  }
+
+  if (idade <= 4) {
+    return "1 a 4 anos";
+  }
+
+  if (idade <= 12) {
+    return "5 a 12 anos";
+  }
+
+  return "13 ou mais anos";
+}
+
+function ordenarPacientes(pacientes: Paciente[]) {
+  return [...pacientes]
+    .filter((paciente) => paciente.nome.trim() !== "")
     .sort((a, b) =>
-      a.localeCompare(b, "pt-BR", {
+      a.nome.localeCompare(b.nome, "pt-BR", {
         sensitivity: "base",
       })
     );
@@ -200,19 +249,27 @@ function obterIntervencaoSugerida(pontuacao: number) {
 export function PaginaNovaAvaliacao() {
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const [parametrosBusca] = useSearchParams();
   const { token } = useSessao();
+  const pacienteIdInicial = Number(parametrosBusca.get("pacienteId"));
 
   const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
   const [gravando, setGravando] = useState(false);
   const [buscandoPacientes, setBuscandoPacientes] = useState(false);
+  const [carregandoPacienteInicial, setCarregandoPacienteInicial] =
+    useState(false);
+  const [pacienteFixoId, setPacienteFixoId] = useState<number | undefined>(
+    Number.isFinite(pacienteIdInicial) && pacienteIdInicial > 0
+      ? pacienteIdInicial
+      : undefined
+  );
+  const [pacienteFixo, setPacienteFixo] = useState<Paciente | null>(null);
   const [pontuacaoFinalizada, setPontuacaoFinalizada] = useState<
     number | undefined
   >(undefined);
   const [emesePontuada, setEmesePontuada] = useState(false);
   const [nebulizacaoPontuada, setNebulizacaoPontuada] = useState(false);
-  const [opcoesPacientes, setOpcoesPacientes] = useState<
-    { value: string; label: string }[]
-  >([]);
+  const [opcoesPacientes, setOpcoesPacientes] = useState<OpcaoPaciente[]>([]);
   const temporizadorBuscaPaciente = useRef<number | undefined>(undefined);
   const buscaPacienteAtual = useRef(0);
   const [form] = Form.useForm<ValoresFormulario>();
@@ -246,6 +303,64 @@ export function PaginaNovaAvaliacao() {
     [pontuacaoParaIntervencao]
   );
 
+  const preencherPaciente = useCallback(
+    (paciente: Paciente) => {
+      const faixaEtaria = calcularFaixaEtaria(paciente.dataNascimento);
+
+      form.setFieldsValue({
+        pacienteId: paciente.id,
+        nomePaciente: paciente.nome,
+        faixaEtaria,
+      });
+      setPacienteFixo(paciente);
+      setPacienteFixoId(paciente.id);
+    },
+    [form]
+  );
+
+  useEffect(() => {
+    if (!token || !pacienteFixoId) {
+      return;
+    }
+
+    let cancelado = false;
+    const tokenAtual = token;
+    const idPacienteAtual = pacienteFixoId;
+
+    async function carregarPacienteInicial() {
+      setCarregandoPacienteInicial(true);
+
+      try {
+        const paciente = await apiBuscarPacientePorId(
+          tokenAtual,
+          idPacienteAtual
+        );
+
+        if (!cancelado) {
+          preencherPaciente(paciente);
+        }
+      } catch (e) {
+        if (!cancelado) {
+          message.error(
+            e instanceof Error
+              ? e.message
+              : "Não foi possível buscar os dados do paciente."
+          );
+        }
+      } finally {
+        if (!cancelado) {
+          setCarregandoPacienteInicial(false);
+        }
+      }
+    }
+
+    void carregarPacienteInicial();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [message, pacienteFixoId, preencherPaciente, token]);
+
   const buscarPacientes = useCallback(
     (nome: string) => {
       window.clearTimeout(temporizadorBuscaPaciente.current);
@@ -267,14 +382,15 @@ export function PaginaNovaAvaliacao() {
             return;
           }
 
-          const nomesOrdenados = ordenarNomesPacientes(
-            pacientes.map((paciente) => paciente.nome)
-          );
+          const pacientesOrdenados = ordenarPacientes(pacientes);
 
           setOpcoesPacientes(
-            nomesOrdenados.map((nomePaciente) => ({
-              value: nomePaciente,
-              label: nomePaciente,
+            pacientesOrdenados.map((paciente) => ({
+              value: paciente.nome,
+              label: paciente.nome,
+              pacienteId: paciente.id,
+              faixaEtaria:
+                calcularFaixaEtaria(paciente.dataNascimento) ?? "",
             }))
           );
         } catch (e) {
@@ -338,6 +454,7 @@ export function PaginaNovaAvaliacao() {
 
       const valores = form.getFieldsValue(true);
       const corpo: CorpoCriarAvaliacao = {
+        pacienteId: valores.pacienteId,
         nomePaciente: texto(valores.nomePaciente),
         faixaEtaria: texto(valores.faixaEtaria),
         leito: texto(valores.leito),
@@ -385,6 +502,11 @@ export function PaginaNovaAvaliacao() {
 
   function novaAvaliacao() {
     form.resetFields();
+    if (pacienteFixo) {
+      preencherPaciente(pacienteFixo);
+    } else if (pacienteFixoId) {
+      form.setFieldsValue({ pacienteId: pacienteFixoId });
+    }
     setPontuacaoFinalizada(undefined);
     setEmesePontuada(false);
     setNebulizacaoPontuada(false);
@@ -410,6 +532,7 @@ export function PaginaNovaAvaliacao() {
         </Button>
         <Button
           type="text"
+          onClick={() => navigate("/inicio")}
           style={{ color: "#fff", height: 40, fontSize: 22 }}
         >
           Histórico Geral
@@ -426,6 +549,7 @@ export function PaginaNovaAvaliacao() {
         form={form}
         layout="vertical"
         initialValues={{
+          pacienteId: pacienteFixoId,
           pontuacaoRespiratoria: 0,
           pontuacaoCardiovascular: 0,
           pontuacaoNeurologica: 0,
@@ -456,12 +580,28 @@ export function PaginaNovaAvaliacao() {
                     size="large"
                     options={opcoesPacientes}
                     onSearch={buscarPacientes}
+                    onSelect={(_, opcao) => {
+                      form.setFieldsValue({
+                        pacienteId: opcao.pacienteId,
+                        nomePaciente: opcao.value,
+                        faixaEtaria: opcao.faixaEtaria || undefined,
+                      });
+                    }}
+                    onChange={(valor) => {
+                      if (!pacienteFixoId) {
+                        form.setFieldsValue({
+                          nomePaciente: valor,
+                          pacienteId: undefined,
+                        });
+                      }
+                    }}
                     placeholder="Digite o nome do paciente"
                     notFoundContent={
                       buscandoPacientes ? "Buscando..." : null
                     }
                     filterOption={false}
                     allowClear
+                    disabled={!!pacienteFixoId || carregandoPacienteInicial}
                   />
                 </Form.Item>
 
@@ -470,7 +610,12 @@ export function PaginaNovaAvaliacao() {
                     size="large"
                     placeholder="Selecione"
                     options={opcoesFaixaEtaria}
+                    disabled={!!pacienteFixoId || carregandoPacienteInicial}
                   />
+                </Form.Item>
+
+                <Form.Item name="pacienteId" hidden>
+                  <InputNumber />
                 </Form.Item>
 
                 <Form.Item name="leito" label="Leito">
