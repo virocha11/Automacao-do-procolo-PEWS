@@ -14,6 +14,9 @@ export class Avaliacao {
   @Column({ type: "varchar", nullable: true })
   avaliadorNome!: string | null;
 
+  @Column({ type: "int", nullable: true })
+  avaliadorId!: number | null;
+
   @Column({ type: "varchar", nullable: true })
   faixaEtaria!: string | null;
 

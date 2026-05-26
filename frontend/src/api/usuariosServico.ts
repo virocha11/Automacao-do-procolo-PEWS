@@ -28,6 +28,7 @@ export type CorpoCriarUsuario = {
   funcao: number;
   dataNascimento: string | null;
   celular: string | null;
+  fotoPerfil: string | null;
 };
 
 export type CorpoAtualizarUsuario = {
@@ -37,6 +38,7 @@ export type CorpoAtualizarUsuario = {
   funcao?: number;
   dataNascimento?: string | null;
   celular?: string | null;
+  fotoPerfil?: string | null;
 };
 
 export async function apiListarUsuarios(token: string): Promise<Usuario[]> {
@@ -73,6 +75,21 @@ export async function apiAtualizarUsuario(
     method: "PUT",
     headers: cabecalhos(token, true),
     body: JSON.stringify(corpo),
+  });
+  if (!res.ok) {
+    await lerErro(res);
+  }
+  return res.json() as Promise<Usuario>;
+}
+
+export async function apiAtualizarMinhaFotoPerfil(
+  token: string,
+  fotoPerfil: string | null
+): Promise<Usuario> {
+  const res = await fetch(`${urlBaseApi()}/usuarios/me/foto`, {
+    method: "PUT",
+    headers: cabecalhos(token, true),
+    body: JSON.stringify({ fotoPerfil }),
   });
   if (!res.ok) {
     await lerErro(res);

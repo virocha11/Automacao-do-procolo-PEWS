@@ -1,4 +1,4 @@
-import { Like } from "typeorm";
+import { Brackets } from "typeorm";
 import { AppDataSource } from "../config/database";
 import { Avaliacao } from "../entities/Avaliacao";
 
@@ -8,6 +8,7 @@ export type DadosCriarAvaliacao = {
   nomePaciente: string | null;
   pacienteId: number | null;
   avaliadorNome: string | null;
+  avaliadorId: number | null;
   faixaEtaria: string | null;
   leito: string | null;
   diagnostico: string | null;
@@ -40,23 +41,40 @@ export async function criarAvaliacao(
 export async function buscarTodasAvaliacoes(
   nomePaciente?: string,
   buscaExata = false,
-  pacienteId?: number
+  pacienteId?: number,
+  avaliador?: { id: number; nome: string }
 ): Promise<Avaliacao[]> {
-  const filtros = [
-    ...(pacienteId ? [{ pacienteId }] : []),
-    ...(nomePaciente
-      ? [
-          {
-            nomePaciente: buscaExata ? nomePaciente : Like(`${nomePaciente}%`),
-          },
-        ]
-      : []),
-  ];
+  const consulta = repositorio
+    .createQueryBuilder("avaliacao")
+    .orderBy("avaliacao.criadoEm", "DESC");
 
-  return repositorio.find({
-    where: filtros.length ? filtros : undefined,
-    order: {
-      criadoEm: "DESC",
-    },
-  });
+  if (pacienteId) {
+    consulta.andWhere("avaliacao.pacienteId = :pacienteId", { pacienteId });
+  }
+
+  if (nomePaciente) {
+    consulta.andWhere(
+      buscaExata
+        ? "avaliacao.nomePaciente = :nomePaciente"
+        : "avaliacao.nomePaciente LIKE :nomePaciente",
+      { nomePaciente: buscaExata ? nomePaciente : `${nomePaciente}%` }
+    );
+  }
+
+  if (avaliador) {
+    consulta.andWhere(
+      new Brackets((subconsulta) => {
+        subconsulta
+          .where("avaliacao.avaliadorId = :avaliadorId", {
+            avaliadorId: avaliador.id,
+          })
+          .orWhere(
+            "avaliacao.avaliadorId IS NULL AND avaliacao.avaliadorNome = :avaliadorNome",
+            { avaliadorNome: avaliador.nome }
+          );
+      })
+    );
+  }
+
+  return consulta.getMany();
 }
