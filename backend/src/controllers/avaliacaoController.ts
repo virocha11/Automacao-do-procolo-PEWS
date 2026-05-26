@@ -46,10 +46,20 @@ export async function listarAvaliacoes(req: Request, res: Response) {
     const nomePaciente = textoOuNulo(req.query.nomePaciente);
     const buscaExata = req.query.exato === "true";
     const pacienteId = numeroPositivoOuNulo(req.query.pacienteId);
+    const apenasMinhas = req.query.minhas === "true";
+    const avaliador = apenasMinhas
+      ? req.usuarioAutenticado
+        ? {
+            id: req.usuarioAutenticado.id,
+            nome: req.usuarioAutenticado.nome,
+          }
+        : undefined
+      : undefined;
     const avaliacoes = await buscarTodasAvaliacoes(
       nomePaciente ?? undefined,
       buscaExata,
-      pacienteId ?? undefined
+      pacienteId ?? undefined,
+      avaliador
     );
 
     res.json(avaliacoes);
@@ -67,6 +77,7 @@ export async function cadastrarAvaliacao(req: Request, res: Response) {
       nomePaciente: textoOuNulo(req.body.nomePaciente),
       pacienteId: numeroPositivoOuNulo(req.body.pacienteId),
       avaliadorNome: req.usuarioAutenticado?.nome ?? null,
+      avaliadorId: req.usuarioAutenticado?.id ?? null,
       faixaEtaria: textoOuNulo(req.body.faixaEtaria),
       leito: textoOuNulo(req.body.leito),
       diagnostico: textoOuNulo(req.body.diagnostico),

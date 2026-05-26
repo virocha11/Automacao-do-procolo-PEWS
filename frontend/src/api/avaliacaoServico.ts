@@ -30,7 +30,7 @@ export async function apiCriarAvaliacao(
 export async function apiListarAvaliacoes(
   token: string,
   nomePaciente?: string,
-  opcoes?: { exato?: boolean; pacienteId?: number }
+  opcoes?: { exato?: boolean; pacienteId?: number; minhas?: boolean }
 ) {
   const parametros = new URLSearchParams();
 
@@ -44,6 +44,10 @@ export async function apiListarAvaliacoes(
 
   if (opcoes?.pacienteId) {
     parametros.set("pacienteId", String(opcoes.pacienteId));
+  }
+
+  if (opcoes?.minhas) {
+    parametros.set("minhas", "true");
   }
 
   const consulta = parametros.toString();
