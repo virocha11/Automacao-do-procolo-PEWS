@@ -13,6 +13,7 @@ export type DadosCriarUsuario = {
   funcao: FuncaoUsuario;
   dataNascimento: Date | null;
   celular: string | null;
+  fotoPerfil: string | null;
 };
 
 export type DadosAtualizarUsuario = {
@@ -22,6 +23,7 @@ export type DadosAtualizarUsuario = {
   funcao?: FuncaoUsuario;
   dataNascimento?: Date | null;
   celular?: string | null;
+  fotoPerfil?: string | null;
 };
 
 export async function buscarTodosUsuarios(): Promise<Usuario[]> {
@@ -52,6 +54,7 @@ export async function criarUsuario(dados: DadosCriarUsuario): Promise<Usuario> {
     funcao: dados.funcao,
     dataNascimento: dados.dataNascimento,
     celular: dados.celular?.trim() || null,
+    fotoPerfil: dados.fotoPerfil,
   });
   return repositorio.save(novo);
 }
@@ -82,6 +85,9 @@ export async function atualizarUsuario(
   }
   if (dados.celular !== undefined) {
     usuario.celular = dados.celular?.trim() || null;
+  }
+  if (dados.fotoPerfil !== undefined) {
+    usuario.fotoPerfil = dados.fotoPerfil;
   }
 
   return repositorio.save(usuario);

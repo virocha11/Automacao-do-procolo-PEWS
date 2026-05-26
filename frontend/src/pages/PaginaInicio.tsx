@@ -31,7 +31,11 @@ function formatarDataHora(valor: string | null | undefined): string {
   }).format(data);
 }
 
-export function PaginaInicio() {
+type PropsPaginaInicio = {
+  apenasMinhas?: boolean;
+};
+
+export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const { token } = useSessao();
@@ -50,7 +54,9 @@ export function PaginaInicio() {
       setCarregando(true);
 
       try {
-        const dados = await apiListarAvaliacoes(token, filtroNome);
+        const dados = await apiListarAvaliacoes(token, filtroNome, {
+          minhas: apenasMinhas,
+        });
 
         if (idBusca !== buscaAtual.current) {
           return;
@@ -73,7 +79,7 @@ export function PaginaInicio() {
         }
       }
     },
-    [message, token]
+    [apenasMinhas, message, token]
   );
 
   useEffect(() => {
@@ -149,6 +155,7 @@ export function PaginaInicio() {
         </Button>
         <Button
           type="text"
+          onClick={() => navigate("/inicio")}
           style={{ color: "#fff", height: 40, fontSize: 22 }}
         >
           Histórico Geral
@@ -173,7 +180,7 @@ export function PaginaInicio() {
           style={{ width: "100%" }}
         >
           <Typography.Title level={2} style={{ color: verde, margin: 0 }}>
-            Histórico Geral
+            {apenasMinhas ? "Minhas Avaliações" : "Histórico Geral"}
           </Typography.Title>
 
           <Input.Search

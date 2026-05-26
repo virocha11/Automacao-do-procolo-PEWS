@@ -39,6 +39,10 @@ export default function App() {
         }
       >
         <Route path="/inicio" element={<PaginaInicio />} />
+        <Route
+          path="/minhas-avaliacoes"
+          element={<PaginaInicio apenasMinhas />}
+        />
         <Route path="/avaliacoes/nova" element={<PaginaNovaAvaliacao />} />
         <Route
           path="/historico/paciente/:pacienteId"

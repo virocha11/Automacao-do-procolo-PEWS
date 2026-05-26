@@ -27,6 +27,16 @@ function funcaoValida(valor: unknown): valor is FuncaoUsuario {
   );
 }
 
+function fotoPerfilValida(valor: unknown): valor is string | null | undefined {
+  return (
+    valor === undefined ||
+    valor === null ||
+    (typeof valor === "string" &&
+      valor.length <= 1_500_000 &&
+      /^data:image\/(png|jpeg|jpg|webp);base64,/.test(valor))
+  );
+}
+
 export async function listarUsuarios(req: Request, res: Response) {
   try {
     const usuarios = await buscarTodosUsuarios();
@@ -38,7 +48,8 @@ export async function listarUsuarios(req: Request, res: Response) {
 
 export async function cadastrarUsuario(req: Request, res: Response) {
   try {
-    const { nome, email, senha, funcao, dataNascimento, celular } = req.body;
+    const { nome, email, senha, funcao, dataNascimento, celular, fotoPerfil } =
+      req.body;
 
     if (!nome || !email || !senha || funcao === undefined || funcao === null) {
       return res.status(400).json({
@@ -50,6 +61,10 @@ export async function cadastrarUsuario(req: Request, res: Response) {
       return res.status(400).json({
         erro: `Função do usuário inválida.`,
       });
+    }
+
+    if (!fotoPerfilValida(fotoPerfil)) {
+      return res.status(400).json({ erro: "Foto de perfil inválida." });
     }
 
     let data: Date | null = null;
@@ -68,6 +83,7 @@ export async function cadastrarUsuario(req: Request, res: Response) {
       funcao,
       dataNascimento: data,
       celular: celular ?? null,
+      fotoPerfil: fotoPerfil ?? null,
     });
 
     res.status(201).json(jsonSemSenha(usuario));
@@ -95,12 +111,17 @@ export async function obterUsuarioPorId(req: Request, res: Response) {
 export async function alterarUsuario(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
-    const { nome, email, senha, funcao, dataNascimento, celular } = req.body;
+    const { nome, email, senha, funcao, dataNascimento, celular, fotoPerfil } =
+      req.body;
 
     if (funcao !== undefined && funcao !== null && !funcaoValida(funcao)) {
       return res.status(400).json({
         erro: `Função do usuário inválida.`,
       });
+    }
+
+    if (!fotoPerfilValida(fotoPerfil)) {
+      return res.status(400).json({ erro: "Foto de perfil inválida." });
     }
 
     let data: Date | null | undefined = undefined;
@@ -128,6 +149,7 @@ export async function alterarUsuario(req: Request, res: Response) {
           : celular === "" || celular === null
             ? null
             : celular,
+      fotoPerfil: fotoPerfil === undefined ? undefined : fotoPerfil,
     });
 
     if (!usuario) {
@@ -137,6 +159,34 @@ export async function alterarUsuario(req: Request, res: Response) {
     res.json(jsonSemSenha(usuario));
   } catch {
     res.status(500).json({ erro: "Não foi possível atualizar o usuário." });
+  }
+}
+
+export async function alterarMinhaFotoPerfil(req: Request, res: Response) {
+  try {
+    const autenticado = req.usuarioAutenticado;
+
+    if (!autenticado) {
+      return res.status(401).json({ erro: "Usuário não autenticado." });
+    }
+
+    const { fotoPerfil } = req.body;
+
+    if (!fotoPerfilValida(fotoPerfil)) {
+      return res.status(400).json({ erro: "Foto de perfil inválida." });
+    }
+
+    const usuario = await atualizarUsuario(autenticado.id, {
+      fotoPerfil: fotoPerfil ?? null,
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ erro: "Usuário não encontrado." });
+    }
+
+    res.json(jsonSemSenha(usuario));
+  } catch {
+    res.status(500).json({ erro: "Não foi possível atualizar a foto." });
   }
 }
 

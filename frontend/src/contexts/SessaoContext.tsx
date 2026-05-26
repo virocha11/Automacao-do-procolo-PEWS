@@ -15,6 +15,7 @@ type SessaoContexto = {
   usuario: Usuario | null;
   token: string | null;
   definirSessao: (token: string, usuario: Usuario) => void;
+  atualizarUsuarioSessao: (usuario: Usuario) => void;
   encerrarSessao: () => void;
 };
 
@@ -46,6 +47,11 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     setUsuario(novoUsuario);
   }, []);
 
+  const atualizarUsuarioSessao = useCallback((novoUsuario: Usuario) => {
+    localStorage.setItem(CHAVE_USUARIO, JSON.stringify(novoUsuario));
+    setUsuario(novoUsuario);
+  }, []);
+
   const encerrarSessao = useCallback(() => {
     localStorage.removeItem(CHAVE_TOKEN);
     localStorage.removeItem(CHAVE_USUARIO);
@@ -58,9 +64,10 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       usuario,
       token,
       definirSessao,
+      atualizarUsuarioSessao,
       encerrarSessao,
     }),
-    [usuario, token, definirSessao, encerrarSessao]
+    [usuario, token, definirSessao, atualizarUsuarioSessao, encerrarSessao]
   );
 
   return (

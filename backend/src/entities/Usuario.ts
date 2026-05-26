@@ -28,4 +28,7 @@ export class Usuario {
 
   @Column({ type: "varchar", length: 20, nullable: true })
   celular!: string | null;
+
+  @Column({ name: "foto_perfil", type: "longtext", nullable: true })
+  fotoPerfil!: string | null;
 }

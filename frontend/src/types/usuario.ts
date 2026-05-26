@@ -5,6 +5,7 @@ export type Usuario = {
   funcao: number;
   dataNascimento?: string | null;
   celular?: string | null;
+  fotoPerfil?: string | null;
 };
 
 export type RespostaLogin = {

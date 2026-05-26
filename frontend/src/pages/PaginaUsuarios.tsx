@@ -1,5 +1,6 @@
 import {
   App,
+  Avatar,
   Button,
   Form,
   Input,
@@ -12,6 +13,7 @@ import {
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import {
   apiAtualizarUsuario,
@@ -44,7 +46,17 @@ type ValoresFormulario = {
   funcao: number;
   dataNascimento?: string;
   celular?: string;
+  fotoPerfil?: string | null;
 };
+
+function arquivoParaDataUrl(arquivo: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onload = () => resolve(String(leitor.result));
+    leitor.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+    leitor.readAsDataURL(arquivo);
+  });
+}
 
 function formatarDataCurta(valor: string | null | undefined): string {
   if (!valor) {
@@ -55,13 +67,14 @@ function formatarDataCurta(valor: string | null | undefined): string {
 
 export function PaginaUsuarios() {
   const { message } = App.useApp();
-  const { token, usuario: usuarioSessao } = useSessao();
+  const { token, usuario: usuarioSessao, atualizarUsuarioSessao } = useSessao();
   const [lista, setLista] = useState<Usuario[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [gravando, setGravando] = useState(false);
   const [usuarioEmEdicao, setUsuarioEmEdicao] = useState<Usuario | null>(null);
   const [form] = Form.useForm<ValoresFormulario>();
+  const fotoPerfil = Form.useWatch("fotoPerfil", form);
 
   const carregar = useCallback(async () => {
     if (!token) {
@@ -87,6 +100,7 @@ export function PaginaUsuarios() {
     form.resetFields();
     form.setFieldsValue({
       funcao: CODIGO_FUNCAO_ENFERMEIRO,
+      fotoPerfil: null,
     });
     setModalAberto(true);
   }
@@ -101,9 +115,36 @@ export function PaginaUsuarios() {
         ? formatarDataCurta(u.dataNascimento)
         : undefined,
       celular: u.celular ?? undefined,
+      fotoPerfil: u.fotoPerfil ?? null,
       senha: undefined,
     });
     setModalAberto(true);
+  }
+
+  async function carregarFotoPerfil(evento: ChangeEvent<HTMLInputElement>) {
+    const arquivo = evento.target.files?.[0];
+    evento.target.value = "";
+
+    if (!arquivo) {
+      return;
+    }
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(arquivo.type)) {
+      message.error("Use uma imagem JPG, PNG ou WebP.");
+      return;
+    }
+
+    if (arquivo.size > 1_000_000) {
+      message.error("A foto deve ter no máximo 1 MB.");
+      return;
+    }
+
+    try {
+      const dataUrl = await arquivoParaDataUrl(arquivo);
+      form.setFieldValue("fotoPerfil", dataUrl);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : "Não foi possível carregar a foto.");
+    }
   }
 
   async function enviarFormulario() {
@@ -133,6 +174,7 @@ export function PaginaUsuarios() {
           funcao: v.funcao,
           dataNascimento: dataNasc,
           celular,
+          fotoPerfil: v.fotoPerfil ?? null,
         });
         message.success("Usuário criado.");
       } else {
@@ -142,11 +184,19 @@ export function PaginaUsuarios() {
           funcao: v.funcao,
           dataNascimento: dataNasc,
           celular,
+          fotoPerfil: v.fotoPerfil ?? null,
         };
         if (v.senha && v.senha.trim() !== "") {
           corpo.senha = v.senha;
         }
-        await apiAtualizarUsuario(token, usuarioEmEdicao.id, corpo);
+        const usuarioAtualizado = await apiAtualizarUsuario(
+          token,
+          usuarioEmEdicao.id,
+          corpo
+        );
+        if (usuarioSessao?.id === usuarioAtualizado.id) {
+          atualizarUsuarioSessao(usuarioAtualizado);
+        }
         message.success("Usuário atualizado.");
       }
       setModalAberto(false);
@@ -176,6 +226,16 @@ export function PaginaUsuarios() {
 
   const colunas: ColumnsType<Usuario> = [
     { title: "Nome", dataIndex: "nome", key: "nome" },
+    {
+      title: "Foto",
+      dataIndex: "fotoPerfil",
+      key: "fotoPerfil",
+      render: (foto: string | null | undefined, registro) => (
+        <Avatar src={foto || undefined}>
+          {registro.nome.charAt(0).toUpperCase()}
+        </Avatar>
+      ),
+    },
     { title: "E-mail", dataIndex: "email", key: "email" },
     {
       title: "Função",
@@ -268,6 +328,32 @@ export function PaginaUsuarios() {
             rules={[{ required: true, message: "Informe o nome." }]}
           >
             <Input autoComplete="name" />
+          </Form.Item>
+          <Form.Item name="fotoPerfil" hidden>
+            <Input />
+          </Form.Item>
+          <Form.Item label="Foto de perfil">
+            <Space align="center">
+              <Avatar size={48} src={fotoPerfil || undefined}>
+                {form.getFieldValue("nome")?.charAt(0).toUpperCase()}
+              </Avatar>
+              <Button>
+                <label style={{ cursor: "pointer" }}>
+                  Carregar foto
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(evento) => void carregarFotoPerfil(evento)}
+                    style={{ display: "none" }}
+                  />
+                </label>
+              </Button>
+              {fotoPerfil ? (
+                <Button onClick={() => form.setFieldValue("fotoPerfil", null)}>
+                  Remover
+                </Button>
+              ) : null}
+            </Space>
           </Form.Item>
           <Form.Item
             name="email"
