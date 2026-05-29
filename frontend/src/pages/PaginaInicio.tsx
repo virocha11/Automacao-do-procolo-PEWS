@@ -148,17 +148,17 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
       >
         <Button
           type="text"
-          onClick={() => navigate("/avaliacoes/nova")}
-          style={{ color: "#fff", height: 40, fontSize: 22 }}
-        >
-          Nova Avaliação
-        </Button>
-        <Button
-          type="text"
           onClick={() => navigate("/inicio")}
           style={{ color: "#fff", height: 40, fontSize: 22 }}
         >
           Histórico Geral
+        </Button>
+        <Button
+          type="text"
+          onClick={() => navigate("/avaliacoes/nova")}
+          style={{ color: "#fff", height: 40, fontSize: 22 }}
+        >
+          Nova Avaliação
         </Button>
         <Button
           type="text"

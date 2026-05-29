@@ -27,3 +27,24 @@ export async function fazerLogin(email: string, senha: string): Promise<Resposta
 
   return corpo as RespostaLogin;
 }
+
+export async function recuperarSenha(email: string): Promise<{ mensagem: string }> {
+  const resposta = await fetch(`${urlBaseApi()}/recuperar-senha`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  const corpo = (await resposta.json()) as {
+    erro?: string;
+    mensagem?: string;
+  };
+
+  if (!resposta.ok) {
+    throw new Error(corpo.erro ?? "Não foi possível recuperar a senha.");
+  }
+
+  return {
+    mensagem: corpo.mensagem ?? "Enviaremos uma nova senha para o e-mail informado.",
+  };
+}
