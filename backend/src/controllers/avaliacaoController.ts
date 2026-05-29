@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import {
   buscarTodasAvaliacoes,
   criarAvaliacao,
+  removerAvaliacao,
 } from "../repositories/avaliacaoRepository";
 
 function textoOuNulo(valor: unknown): string | null {
@@ -104,6 +105,29 @@ export async function cadastrarAvaliacao(req: Request, res: Response) {
     console.error(erro);
     res.status(500).json({
       erro: "Não foi possível cadastrar a avaliação.",
+    });
+  }
+}
+
+export async function excluirAvaliacao(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ erro: "ID inválido." });
+    }
+
+    const removida = await removerAvaliacao(id);
+
+    if (!removida) {
+      return res.status(404).json({ erro: "Avaliação não encontrada." });
+    }
+
+    res.json({ mensagem: "Avaliação removida com sucesso." });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({
+      erro: "Não foi possível remover a avaliação.",
     });
   }
 }

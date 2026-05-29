@@ -20,8 +20,9 @@ import {
     apiListarPacientes,
   } from "../api/pacienteServico";
   
-  import { useSessao } from "../contexts/SessaoContext";
-  import type { Paciente } from "../types/paciente";
+	  import { useSessao } from "../contexts/SessaoContext";
+	  import { CODIGO_FUNCAO_ADMINISTRADOR } from "../lib/funcaoUsuario";
+	  import type { Paciente } from "../types/paciente";
   
   const { Title } = Typography;
   
@@ -44,7 +45,9 @@ import {
   export function PaginaPacientes() {
     const { message } = App.useApp();
   
-    const { token } = useSessao();
+	    const { token, usuario } = useSessao();
+	    const usuarioAdministrador =
+	      usuario?.funcao === CODIGO_FUNCAO_ADMINISTRADOR;
   
     const [lista, setLista] = useState<Paciente[]>([]);
     const [carregando, setCarregando] = useState(false);
@@ -219,17 +222,19 @@ import {
             >
               Editar
             </Button>
-  
-            <Popconfirm
-              title="Excluir paciente?"
-              okText="Excluir"
-              cancelText="Cancelar"
-              onConfirm={() => remover(registro.id)}
-            >
-              <Button type="link" danger>
-                Excluir
-              </Button>
-            </Popconfirm>
+	  
+	            {usuarioAdministrador ? (
+	              <Popconfirm
+	                title="Excluir paciente?"
+	                okText="Excluir"
+	                cancelText="Cancelar"
+	                onConfirm={() => remover(registro.id)}
+	              >
+	                <Button type="link" danger>
+	                  Excluir
+	                </Button>
+	              </Popconfirm>
+	            ) : null}
           </Space>
         ),
       },
