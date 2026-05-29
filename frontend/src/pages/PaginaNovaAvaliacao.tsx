@@ -647,6 +647,7 @@ export function PaginaNovaAvaliacao() {
         </Button>
         <Button
           type="text"
+          onClick={() => navigate("/manual-pews")}
           style={{ color: "#fff", height: 40, fontSize: 22 }}
         >
           Como Utilizar o PEWS
