@@ -5,7 +5,7 @@ import {
   LogoutOutlined,
   MenuOutlined,
 } from "@ant-design/icons";
-import { App, Avatar, Button, Dropdown, Modal, Space, Typography } from "antd";
+import { App, Avatar, Button, Dropdown, Modal, Space } from "antd";
 import type { MenuProps } from "antd";
 import type { ChangeEvent } from "react";
 import { useState } from "react";
@@ -14,8 +14,6 @@ import { apiAtualizarMinhaFotoPerfil } from "../api/usuariosServico";
 import { useSessao } from "../contexts/SessaoContext";
 import { usuarioPossuiItensNoMenuLateral } from "../config/menuLateralDefinicao";
 import { nomeDaFuncao } from "../lib/funcaoUsuario";
-
-const { Text } = Typography;
 
 const verdeCabecalho = "#1b5e20";
 
@@ -154,9 +152,15 @@ export function CabecalhoPrincipal({
             />
           ) : null}
         </div>
-        <Text
+        <button
+          type="button"
+          onClick={() => navigate("/inicio")}
+          aria-label="Ir para o histórico geral"
           style={{
+            background: "transparent",
+            border: 0,
             color: "#fff",
+            cursor: "pointer",
             margin: 0,
             letterSpacing: 3,
             textAlign: "center",
@@ -166,10 +170,11 @@ export function CabecalhoPrincipal({
             lineHeight: 1.35,
             height: "auto",
             padding: "0 8px",
+            fontFamily: "inherit",
           }}
         >
           PEWS
-        </Text>
+        </button>
         <div style={{ justifySelf: "end", minWidth: 0 }}>
           <Dropdown
             menu={{
