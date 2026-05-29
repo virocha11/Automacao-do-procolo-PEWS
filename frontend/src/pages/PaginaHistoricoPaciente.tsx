@@ -5,6 +5,7 @@ import {
   Collapse,
   Descriptions,
   Empty,
+  Popconfirm,
   Space,
   Spin,
   Tag,
@@ -13,17 +14,22 @@ import {
 import {
   ArrowLeftOutlined,
   CalendarOutlined,
+  DeleteOutlined,
   FileAddOutlined,
 } from "@ant-design/icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { apiListarAvaliacoes } from "../api/avaliacaoServico";
+import {
+  apiExcluirAvaliacao,
+  apiListarAvaliacoes,
+} from "../api/avaliacaoServico";
 import {
   apiBuscarPacientePorId,
   apiListarPacientes,
 } from "../api/pacienteServico";
 import { useSessao } from "../contexts/SessaoContext";
+import { CODIGO_FUNCAO_ADMINISTRADOR } from "../lib/funcaoUsuario";
 import type { Avaliacao } from "../types/avaliacao";
 import type { Paciente } from "../types/paciente";
 
@@ -47,6 +53,23 @@ function formatarDataHora(valor: string | null | undefined): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  }).format(data);
+}
+
+function formatarDataCurta(valor: string | null | undefined): string {
+  if (!valor) {
+    return "-";
+  }
+
+  const data = new Date(valor);
+
+  if (Number.isNaN(data.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
   }).format(data);
 }
 
@@ -83,6 +106,15 @@ function ordenarPorMaisRecente(avaliacoes: Avaliacao[]) {
   });
 }
 
+function ordenarPorMaisAntiga(avaliacoes: Avaliacao[]) {
+  return [...avaliacoes].sort((a, b) => {
+    const dataA = new Date(a.criadoEm).getTime();
+    const dataB = new Date(b.criadoEm).getTime();
+
+    return dataA - dataB;
+  });
+}
+
 function nomesIguais(a: string, b: string) {
   return (
     a.trim().localeCompare(b.trim(), "pt-BR", {
@@ -91,10 +123,224 @@ function nomesIguais(a: string, b: string) {
   );
 }
 
+function GraficoEvolucaoPews({ avaliacoes }: { avaliacoes: Avaliacao[] }) {
+  const dados = ordenarPorMaisAntiga(avaliacoes);
+  const largura = 360;
+  const altura = 150;
+  const margem = { topo: 18, direita: 14, baixo: 30, esquerda: 30 };
+  const larguraGrafico = largura - margem.esquerda - margem.direita;
+  const alturaGrafico = altura - margem.topo - margem.baixo;
+  const maiorValor = Math.max(7, ...dados.map((item) => item.pontuacaoTotal));
+  const passos = Array.from({ length: maiorValor + 1 }, (_, indice) => indice);
+
+  function x(indice: number) {
+    if (dados.length <= 1) {
+      return margem.esquerda + larguraGrafico / 2;
+    }
+
+    return margem.esquerda + (indice / (dados.length - 1)) * larguraGrafico;
+  }
+
+  function y(valor: number) {
+    return (
+      margem.topo +
+      alturaGrafico -
+      (Math.min(valor, maiorValor) / maiorValor) * alturaGrafico
+    );
+  }
+
+  const pontos = dados.map((avaliacao, indice) => ({
+    avaliacao,
+    x: x(indice),
+    y: y(avaliacao.pontuacaoTotal),
+  }));
+
+  const caminhoLinha = pontos
+    .map((ponto, indice) => `${indice === 0 ? "M" : "L"} ${ponto.x} ${ponto.y}`)
+    .join(" ");
+
+  const rotulosData = dados.filter((_, indice) => {
+    if (dados.length <= 6) {
+      return true;
+    }
+
+    return indice === 0 || indice === dados.length - 1;
+  });
+
+  return (
+    <Card
+      title="Evolução do PEWS"
+      size="small"
+      style={{ minWidth: 300 }}
+      styles={{
+        header: { minHeight: 36, padding: "0 12px" },
+        body: { padding: 10 },
+      }}
+    >
+      <div>
+        <svg
+          viewBox={`0 0 ${largura} ${altura}`}
+          role="img"
+          aria-label="Gráfico de evolução da pontuação PEWS do paciente"
+          style={{ width: "100%", height: "auto", display: "block" }}
+        >
+          <rect
+            x={margem.esquerda}
+            y={y(maiorValor)}
+            width={larguraGrafico}
+            height={y(5) - y(maiorValor)}
+            fill="#fff1f0"
+          />
+          <rect
+            x={margem.esquerda}
+            y={y(5)}
+            width={larguraGrafico}
+            height={y(3) - y(5)}
+            fill="#fffbe6"
+          />
+          <rect
+            x={margem.esquerda}
+            y={y(3)}
+            width={larguraGrafico}
+            height={y(0) - y(3)}
+            fill="#f6ffed"
+          />
+
+          {passos.map((valor) => (
+            <g key={valor}>
+              <line
+                x1={margem.esquerda}
+                x2={largura - margem.direita}
+                y1={y(valor)}
+                y2={y(valor)}
+                stroke="#d9e3dd"
+                strokeWidth={valor === 0 ? 1.4 : 0.8}
+              />
+              <text
+                x={margem.esquerda - 12}
+                y={y(valor) + 4}
+                textAnchor="end"
+                fill="#5b6b61"
+                fontSize="10"
+              >
+                {valor}
+              </text>
+            </g>
+          ))}
+
+          <line
+            x1={margem.esquerda}
+            x2={margem.esquerda}
+            y1={margem.topo}
+            y2={margem.topo + alturaGrafico}
+            stroke="#8da396"
+          />
+          <line
+            x1={margem.esquerda}
+            x2={largura - margem.direita}
+            y1={margem.topo + alturaGrafico}
+            y2={margem.topo + alturaGrafico}
+            stroke="#8da396"
+          />
+
+          {pontos.length > 1 ? (
+            <path
+              d={caminhoLinha}
+              fill="none"
+              stroke={verde}
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ) : null}
+
+          {pontos.map((ponto) => {
+            const classificacao = classificarPontuacao(
+              ponto.avaliacao.pontuacaoTotal
+            );
+
+            return (
+              <g key={ponto.avaliacao.id}>
+                <circle
+                  cx={ponto.x}
+                  cy={ponto.y}
+                  r="4.5"
+                  fill="#fff"
+                  stroke={verde}
+                  strokeWidth="2.4"
+                >
+                  <title>
+                    {`${formatarDataHora(ponto.avaliacao.criadoEm)} | PEWS ${
+                      ponto.avaliacao.pontuacaoTotal
+                    } | ${texto(ponto.avaliacao.avaliadorNome)} | ${
+                      classificacao.texto
+                    }`}
+                  </title>
+                </circle>
+                <text
+                  x={ponto.x}
+                  y={ponto.y - 12}
+                  textAnchor="middle"
+                  fill="#1f3d2b"
+                  fontSize="10"
+                  fontWeight="600"
+                >
+                  {ponto.avaliacao.pontuacaoTotal}
+                </text>
+              </g>
+            );
+          })}
+
+          {rotulosData.map((avaliacao, indice) => {
+            const indiceOriginal = dados.findIndex((item) => item.id === avaliacao.id);
+
+            return (
+              <text
+                key={`${avaliacao.id}-${indice}`}
+                x={x(indiceOriginal)}
+                y={altura - 20}
+                textAnchor="middle"
+                fill="#5b6b61"
+                fontSize="10"
+              >
+                {formatarDataCurta(avaliacao.criadoEm)}
+              </text>
+            );
+          })}
+
+          <text
+            x={margem.esquerda}
+            y={altura - 6}
+            fill="#6f7c73"
+            fontSize="10"
+          >
+            Mais antiga
+          </text>
+          <text
+            x={largura - margem.direita}
+            y={altura - 6}
+            textAnchor="end"
+            fill="#6f7c73"
+            fontSize="10"
+          >
+            Mais recente
+          </text>
+        </svg>
+      </div>
+
+      <Space size={[4, 4]} wrap style={{ marginTop: 6 }}>
+        <Tag color="green">0-2 baixo risco</Tag>
+        <Tag color="gold">3-4 atenção</Tag>
+        <Tag color="red">5+ alto risco</Tag>
+      </Space>
+    </Card>
+  );
+}
+
 export function PaginaHistoricoPaciente() {
   const { message } = App.useApp();
   const navigate = useNavigate();
-  const { token } = useSessao();
+  const { token, usuario } = useSessao();
   const { pacienteId = "" } = useParams();
   const idPaciente = Number(pacienteId);
   const rotaPorId = Number.isFinite(idPaciente) && idPaciente > 0;
@@ -102,6 +348,7 @@ export function PaginaHistoricoPaciente() {
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const usuarioAdministrador = usuario?.funcao === CODIGO_FUNCAO_ADMINISTRADOR;
 
   const carregarAvaliacoes = useCallback(async () => {
     if (!token || (!rotaPorId && !nomeLegado.trim())) {
@@ -182,6 +429,22 @@ export function PaginaHistoricoPaciente() {
     });
   }
 
+  async function removerAvaliacao(id: number) {
+    if (!token) {
+      return;
+    }
+
+    try {
+      await apiExcluirAvaliacao(token, id);
+      message.success("Avaliação removida.");
+      await carregarAvaliacoes();
+    } catch (e) {
+      message.error(
+        e instanceof Error ? e.message : "Não foi possível remover a avaliação."
+      );
+    }
+  }
+
   const itensCollapse = avaliacoes.map((avaliacao) => {
     const classificacao = classificarPontuacao(avaliacao.pontuacaoTotal);
 
@@ -209,6 +472,28 @@ export function PaginaHistoricoPaciente() {
           <Space>
             <Tag color={classificacao.cor}>{classificacao.texto}</Tag>
             <Tag color="default">PEWS {avaliacao.pontuacaoTotal}</Tag>
+            {usuarioAdministrador ? (
+              <span onClick={(evento) => evento.stopPropagation()}>
+                <Popconfirm
+                  title="Excluir avaliação?"
+                  okText="Excluir"
+                  cancelText="Cancelar"
+                  onConfirm={(evento) => {
+                    evento?.stopPropagation();
+                    void removerAvaliacao(avaliacao.id);
+                  }}
+                >
+                  <Button
+                    danger
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    onClick={(evento) => evento.stopPropagation()}
+                  >
+                    Excluir
+                  </Button>
+                </Popconfirm>
+              </span>
+            ) : null}
           </Space>
         </div>
       ),
@@ -386,49 +671,54 @@ export function PaginaHistoricoPaciente() {
             </div>
           ) : avaliacoes.length === 0 ? (
             <Empty description="Nenhuma avaliação encontrada para este paciente." />
-          ) : (
-            <>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                  gap: 12,
-                }}
-              >
-                <Card size="small">
-                  <Typography.Text type="secondary">Último PEWS</Typography.Text>
-                  <Typography.Title level={3} style={{ margin: "4px 0 0" }}>
-                    {avaliacaoMaisRecente.pontuacaoTotal}
-                  </Typography.Title>
-                  <Tag color={classificacaoAtual.cor}>
-                    {classificacaoAtual.texto}
-                  </Tag>
-                </Card>
-                <Card size="small">
-                  <Typography.Text type="secondary">Avaliações</Typography.Text>
-                  <Typography.Title level={3} style={{ margin: "4px 0 0" }}>
-                    {avaliacoes.length}
-                  </Typography.Title>
-                </Card>
-                <Card size="small">
-                  <Typography.Text type="secondary">Maior PEWS</Typography.Text>
-                  <Typography.Title level={3} style={{ margin: "4px 0 0" }}>
-                    {maiorPontuacao}
-                  </Typography.Title>
-                </Card>
-                <Card size="small">
-                  <Typography.Text type="secondary">
-                    Última avaliação
-                  </Typography.Text>
-                  <Typography.Title level={5} style={{ margin: "8px 0 0" }}>
-                    {formatarDataHora(avaliacaoMaisRecente.criadoEm)}
-                  </Typography.Title>
-                </Card>
-              </div>
+	          ) : (
+	            <>
+		              <div
+		                style={{
+		                  display: "grid",
+		                  gridTemplateColumns:
+		                    "repeat(4, minmax(140px, 1fr)) minmax(300px, 360px)",
+		                  gap: 12,
+		                  alignItems: "stretch",
+		                  overflowX: "auto",
+		                }}
+		              >
+		                <Card size="small" style={{ minWidth: 140 }}>
+		                  <Typography.Text type="secondary">Último PEWS</Typography.Text>
+		                  <Typography.Title level={3} style={{ margin: "4px 0 0" }}>
+		                    {avaliacaoMaisRecente.pontuacaoTotal}
+		                  </Typography.Title>
+		                  <Tag color={classificacaoAtual.cor}>
+		                    {classificacaoAtual.texto}
+		                  </Tag>
+		                </Card>
+		                <Card size="small" style={{ minWidth: 140 }}>
+		                  <Typography.Text type="secondary">Avaliações</Typography.Text>
+		                  <Typography.Title level={3} style={{ margin: "4px 0 0" }}>
+		                    {avaliacoes.length}
+		                  </Typography.Title>
+		                </Card>
+		                <Card size="small" style={{ minWidth: 140 }}>
+		                  <Typography.Text type="secondary">Maior PEWS</Typography.Text>
+		                  <Typography.Title level={3} style={{ margin: "4px 0 0" }}>
+		                    {maiorPontuacao}
+		                  </Typography.Title>
+		                </Card>
+		                <Card size="small" style={{ minWidth: 140 }}>
+		                  <Typography.Text type="secondary">
+		                    Última avaliação
+		                  </Typography.Text>
+		                  <Typography.Title level={5} style={{ margin: "8px 0 0" }}>
+		                    {formatarDataHora(avaliacaoMaisRecente.criadoEm)}
+		                  </Typography.Title>
+		                </Card>
 
-              <Collapse
-                accordion
-                size="large"
+		                <GraficoEvolucaoPews avaliacoes={avaliacoes} />
+		              </div>
+		
+		              <Collapse
+	                accordion
+	                size="large"
                 items={itensCollapse}
               />
             </>

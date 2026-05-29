@@ -7,6 +7,7 @@ import {
   alterarPaciente,
   excluirPaciente,
 } from "../controllers/pacienteController";
+import { exigirAdministrador } from "../middleware/exigirAdministrador";
 
 const rotas = Router();
 
@@ -18,6 +19,6 @@ rotas.get("/pacientes/:id", obterPacientePorId);
 
 rotas.put("/pacientes/:id", alterarPaciente);
 
-rotas.delete("/pacientes/:id", excluirPaciente);
+rotas.delete("/pacientes/:id", exigirAdministrador, excluirPaciente);
 
 export default rotas;

@@ -78,3 +78,9 @@ export async function buscarTodasAvaliacoes(
 
   return consulta.getMany();
 }
+
+export async function removerAvaliacao(id: number): Promise<boolean> {
+  const resultado = await repositorio.delete(id);
+
+  return !!resultado.affected && resultado.affected > 0;
+}

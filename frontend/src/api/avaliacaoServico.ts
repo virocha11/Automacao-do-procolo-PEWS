@@ -62,3 +62,14 @@ export async function apiListarAvaliacoes(
 
   return tratarResposta(resposta) as Promise<Avaliacao[]>;
 }
+
+export async function apiExcluirAvaliacao(token: string, id: number) {
+  const resposta = await fetch(`${urlBaseApi()}/avaliacoes/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return tratarResposta(resposta);
+}
