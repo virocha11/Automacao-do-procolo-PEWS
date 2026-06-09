@@ -16,6 +16,7 @@ import {
   CalendarOutlined,
   DeleteOutlined,
   FileAddOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -29,6 +30,7 @@ import {
   apiListarPacientes,
 } from "../api/pacienteServico";
 import { useSessao } from "../contexts/SessaoContext";
+import { imprimirAvaliacao } from "../lib/impressaoAvaliacao";
 import { CODIGO_FUNCAO_ADMINISTRADOR } from "../lib/funcaoUsuario";
 import type { Avaliacao } from "../types/avaliacao";
 import type { Paciente } from "../types/paciente";
@@ -445,6 +447,38 @@ export function PaginaHistoricoPaciente() {
     }
   }
 
+  const imprimirHistoricoAvaliacao = useCallback(
+    (avaliacao: Avaliacao) => {
+      imprimirAvaliacao(
+        {
+          pacienteNome: texto(avaliacao.nomePaciente),
+          faixaEtaria: texto(avaliacao.faixaEtaria),
+          leito: texto(avaliacao.leito),
+          diagnostico: texto(avaliacao.diagnostico),
+          dih: avaliacao.dih,
+          avaliadorNome: usuario?.nome,
+          criadoEm: avaliacao.criadoEm ?? new Date().toISOString(),
+          avaliacaoRespiratoria: texto(avaliacao.avaliacaoRespiratoria),
+          pontuacaoRespiratoria: avaliacao.pontuacaoRespiratoria,
+          avaliacaoCardiovascular: texto(avaliacao.avaliacaoCardiovascular),
+          pontuacaoCardiovascular: avaliacao.pontuacaoCardiovascular,
+          avaliacaoNeurologica: texto(avaliacao.avaliacaoNeurologica),
+          pontuacaoNeurologica: avaliacao.pontuacaoNeurologica,
+          frequenciaRespiratoria: avaliacao.frequenciaRespiratoria,
+          frequenciaCardiaca: avaliacao.frequenciaCardiaca,
+          vigilia: avaliacao.vigilia,
+          emesePosOperatorio: avaliacao.emesePosOperatorio,
+          nebulizacaoResgate: avaliacao.nebulizacaoResgate,
+          pontuacaoTotal: avaliacao.pontuacaoTotal,
+          intervencao: texto(avaliacao.intervencao),
+          tempoControleSsvv: texto(avaliacao.tempoControleSsvv),
+        },
+        "Avaliação PEWS"
+      );
+    },
+    [usuario?.nome]
+  );
+
   const itensCollapse = avaliacoes.map((avaliacao) => {
     const classificacao = classificarPontuacao(avaliacao.pontuacaoTotal);
 
@@ -472,6 +506,17 @@ export function PaginaHistoricoPaciente() {
           <Space>
             <Tag color={classificacao.cor}>{classificacao.texto}</Tag>
             <Tag color="default">PEWS {avaliacao.pontuacaoTotal}</Tag>
+            <Button
+              type="default"
+              size="small"
+              icon={<PrinterOutlined />}
+              onClick={(evento) => {
+                evento.stopPropagation();
+                imprimirHistoricoAvaliacao(avaliacao);
+              }}
+            >
+              Imprimir
+            </Button>
             {usuarioAdministrador ? (
               <span onClick={(evento) => evento.stopPropagation()}>
                 <Popconfirm

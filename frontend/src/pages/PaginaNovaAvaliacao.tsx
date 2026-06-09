@@ -20,6 +20,7 @@ import {
   apiListarPacientes,
 } from "../api/pacienteServico";
 import { useSessao } from "../contexts/SessaoContext";
+import { imprimirAvaliacao } from "../lib/impressaoAvaliacao";
 import type { CorpoCriarAvaliacao } from "../types/avaliacao";
 import type { Paciente } from "../types/paciente";
 
@@ -288,7 +289,7 @@ export function PaginaNovaAvaliacao() {
   const navigate = useNavigate();
   const location = useLocation();
   const [parametrosBusca] = useSearchParams();
-  const { token } = useSessao();
+  const { token, usuario } = useSessao();
   const pacienteIdInicial = Number(parametrosBusca.get("pacienteId"));
   const estadoNavegacao = location.state as EstadoNavegacaoAvaliacao | null;
 
@@ -575,6 +576,47 @@ export function PaginaNovaAvaliacao() {
     setNebulizacaoPontuada(false);
     setEtapa(1);
   }
+
+  const imprimirAvaliacaoAtual = useCallback(async () => {
+    try {
+      await form.validateFields();
+
+      const valores = form.getFieldsValue(true);
+
+      imprimirAvaliacao(
+        {
+          pacienteNome: texto(valores.nomePaciente) ?? "-",
+          faixaEtaria: texto(valores.faixaEtaria),
+          leito: texto(valores.leito),
+          diagnostico: texto(valores.diagnostico),
+          dih: valores.dih,
+          avaliadorNome: usuario?.nome,
+          criadoEm: new Date().toISOString(),
+          avaliacaoRespiratoria: texto(valores.avaliacaoRespiratoria),
+          pontuacaoRespiratoria: valores.pontuacaoRespiratoria ?? 0,
+          avaliacaoCardiovascular: texto(valores.avaliacaoCardiovascular),
+          pontuacaoCardiovascular: valores.pontuacaoCardiovascular ?? 0,
+          avaliacaoNeurologica: texto(valores.avaliacaoNeurologica),
+          pontuacaoNeurologica: valores.pontuacaoNeurologica ?? 0,
+          frequenciaRespiratoria: valores.frequenciaRespiratoria,
+          frequenciaCardiaca: valores.frequenciaCardiaca,
+          vigilia: valores.vigilia ?? false,
+          emesePosOperatorio: valores.emesePosOperatorio ?? false,
+          nebulizacaoResgate: valores.nebulizacaoResgate ?? false,
+          pontuacaoTotal: pontuacaoParaIntervencao,
+          intervencao: intervencaoSugerida.intervencao,
+          tempoControleSsvv: intervencaoSugerida.tempoControleSsvv,
+        },
+        "Avaliação PEWS"
+      );
+    } catch (e) {
+      message.error(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível gerar a impressão."
+      );
+    }
+  }, [form, intervencaoSugerida, message, pontuacaoParaIntervencao, usuario?.nome]);
 
   function renderNavegacaoEtapas() {
     return (
@@ -1083,7 +1125,7 @@ export function PaginaNovaAvaliacao() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr auto 1fr",
+                gridTemplateColumns: "1fr auto auto 1fr",
                 gap: 16,
                 alignItems: "center",
                 marginTop: 140,
@@ -1095,6 +1137,13 @@ export function PaginaNovaAvaliacao() {
                 onClick={() => setEtapa(2)}
               >
                 Voltar
+              </Button>
+              <Button
+                type="default"
+                style={{ minWidth: 164, height: 48, borderRadius: 4 }}
+                onClick={() => void imprimirAvaliacaoAtual()}
+              >
+                Imprimir
               </Button>
               <Button
                 type="primary"
