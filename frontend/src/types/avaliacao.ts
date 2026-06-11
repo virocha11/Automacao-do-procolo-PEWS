@@ -27,4 +27,12 @@ export type Avaliacao = CorpoCriarAvaliacao & {
   id: number;
   dataAvaliacao?: string | null;
   criadoEm: string;
+  anexoCaminho?: string | null;
+  anexoNomeOriginal?: string | null;
+  anexos?: {
+    id: number;
+    caminho: string;
+    nomeOriginal: string;
+    criadoEm: string;
+  }[];
 };

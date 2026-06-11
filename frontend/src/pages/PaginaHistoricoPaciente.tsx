@@ -14,21 +14,23 @@ import {
 import {
   ArrowLeftOutlined,
   CalendarOutlined,
+  CloseOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   FileAddOutlined,
   PrinterOutlined,
 } from "@ant-design/icons";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import {
+  apiAnexarArquivoAvaliacao,
   apiExcluirAvaliacao,
+  apiExcluirAnexoAvaliacao,
   apiListarAvaliacoes,
 } from "../api/avaliacaoServico";
-import {
-  apiBuscarPacientePorId,
-  apiListarPacientes,
-} from "../api/pacienteServico";
+import { apiBuscarPacientePorId, apiListarPacientes } from "../api/pacienteServico";
+import { urlBaseApi } from "../api/requisicoes";
 import { useSessao } from "../contexts/SessaoContext";
 import { imprimirAvaliacao } from "../lib/impressaoAvaliacao";
 import { CODIGO_FUNCAO_ADMINISTRADOR } from "../lib/funcaoUsuario";
@@ -350,6 +352,9 @@ export function PaginaHistoricoPaciente() {
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const [avaliacaoParaAnexo, setAvaliacaoParaAnexo] = useState<number | null>(null);
+  const [anexoCarregandoId, setAnexoCarregandoId] = useState<number | null>(null);
+  const arquivoInputRef = useRef<HTMLInputElement>(null);
   const usuarioAdministrador = usuario?.funcao === CODIGO_FUNCAO_ADMINISTRADOR;
 
   const carregarAvaliacoes = useCallback(async () => {
@@ -447,6 +452,56 @@ export function PaginaHistoricoPaciente() {
     }
   }
 
+  async function anexarArquivoAvaliacao(evento: ChangeEvent<HTMLInputElement>) {
+    const arquivo = evento.target.files?.[0];
+    const avaliacaoId = avaliacaoParaAnexo;
+
+    if (!arquivo || !avaliacaoId || !token) {
+      return;
+    }
+
+    setAnexoCarregandoId(avaliacaoId);
+
+    try {
+      await apiAnexarArquivoAvaliacao(token, avaliacaoId, arquivo);
+      message.success("Arquivo anexado com sucesso.");
+      await carregarAvaliacoes();
+    } catch (e) {
+      message.error(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível anexar o arquivo."
+      );
+    } finally {
+      setAnexoCarregandoId(null);
+      setAvaliacaoParaAnexo(null);
+      if (arquivoInputRef.current) {
+        arquivoInputRef.current.value = "";
+      }
+    }
+  }
+
+  async function removerAnexoAvaliacao(
+    avaliacaoId: number,
+    anexoId?: number
+  ) {
+    if (!token) {
+      return;
+    }
+
+    try {
+      await apiExcluirAnexoAvaliacao(token, avaliacaoId, anexoId);
+      message.success("Anexo excluído com sucesso.");
+      await carregarAvaliacoes();
+    } catch (e) {
+      message.error(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível excluir o anexo."
+      );
+    }
+  }
+
   const imprimirHistoricoAvaliacao = useCallback(
     (avaliacao: Avaliacao) => {
       imprimirAvaliacao(
@@ -517,6 +572,95 @@ export function PaginaHistoricoPaciente() {
             >
               Imprimir
             </Button>
+            <Button
+              type="default"
+              size="small"
+              icon={<FileAddOutlined />}
+              loading={anexoCarregandoId === avaliacao.id}
+              onClick={(evento) => {
+                evento.stopPropagation();
+
+                const totalAnexos =
+                  (avaliacao.anexos?.length ?? 0) +
+                  (avaliacao.anexoCaminho ? 1 : 0);
+
+                if (totalAnexos >= 3) {
+                  message.warning(
+                    "São permitidos 3 arquivos por avaliação. Limite atingido"
+                  );
+                  return;
+                }
+
+                setAvaliacaoParaAnexo(avaliacao.id);
+                arquivoInputRef.current?.click();
+              }}
+            >
+              Anexar
+            </Button>
+            {(avaliacao.anexos?.length ?? 0) > 0 || avaliacao.anexoCaminho ? (
+              <Space wrap>
+                {avaliacao.anexos?.map((anexo) => (
+                  <Space key={anexo.id} size="small" wrap>
+                    <Typography.Link
+                      href={`${urlBaseApi()}/anexos/${encodeURIComponent(
+                        anexo.caminho
+                      )}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {anexo.nomeOriginal}
+                    </Typography.Link>
+                    <Popconfirm
+                      title="Tem certeza que deseja excluir este anexo?"
+                      okText="Excluir"
+                      cancelText="Cancelar"
+                      onConfirm={(evento) => {
+                        evento?.stopPropagation();
+                        void removerAnexoAvaliacao(avaliacao.id, anexo.id);
+                      }}
+                    >
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CloseOutlined />}
+                        title="Excluir anexo"
+                        onClick={(evento) => evento.stopPropagation()}
+                      />
+                    </Popconfirm>
+                  </Space>
+                ))}
+                {avaliacao.anexoCaminho ? (
+                  <Space size="small" wrap>
+                    <Typography.Link
+                      href={`${urlBaseApi()}/anexos/${encodeURIComponent(
+                        avaliacao.anexoCaminho
+                      )}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {avaliacao.anexoNomeOriginal ?? "Anexo"}
+                    </Typography.Link>
+                    <Popconfirm
+                      title="Tem certeza que deseja excluir este anexo?"
+                      okText="Excluir"
+                      cancelText="Cancelar"
+                      onConfirm={(evento) => {
+                        evento?.stopPropagation();
+                        void removerAnexoAvaliacao(avaliacao.id);
+                      }}
+                    >
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CloseOutlined />}
+                        title="Excluir anexo"
+                        onClick={(evento) => evento.stopPropagation()}
+                      />
+                    </Popconfirm>
+                  </Space>
+                ) : null}
+              </Space>
+            ) : null}
             {usuarioAdministrador ? (
               <span onClick={(evento) => evento.stopPropagation()}>
                 <Popconfirm
@@ -644,6 +788,13 @@ export function PaginaHistoricoPaciente() {
 
   return (
     <div style={{ margin: "-24px" }}>
+      <input
+        ref={arquivoInputRef}
+        type="file"
+        accept="*/*"
+        style={{ display: "none" }}
+        onChange={anexarArquivoAvaliacao}
+      />
       <nav
         style={{
           display: "grid",
