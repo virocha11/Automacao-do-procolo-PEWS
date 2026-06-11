@@ -27,6 +27,42 @@ export async function apiCriarAvaliacao(
   return tratarResposta(resposta) as Promise<Avaliacao>;
 }
 
+export async function apiAtualizarAvaliacao(
+  token: string,
+  avaliacaoId: number,
+  corpo: Partial<CorpoCriarAvaliacao>
+) {
+  const resposta = await fetch(`${urlBaseApi()}/avaliacoes/${avaliacaoId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(corpo),
+  });
+
+  return tratarResposta(resposta) as Promise<Avaliacao>;
+}
+
+export async function apiAnexarArquivoAvaliacao(
+  token: string,
+  avaliacaoId: number,
+  arquivo: File
+) {
+  const formData = new FormData();
+  formData.append("anexo", arquivo);
+
+  const resposta = await fetch(`${urlBaseApi()}/avaliacoes/${avaliacaoId}/anexo`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  return tratarResposta(resposta) as Promise<Avaliacao>;
+}
+
 export async function apiListarAvaliacoes(
   token: string,
   nomePaciente?: string,
@@ -72,4 +108,23 @@ export async function apiExcluirAvaliacao(token: string, id: number) {
   });
 
   return tratarResposta(resposta);
+}
+
+export async function apiExcluirAnexoAvaliacao(
+  token: string,
+  avaliacaoId: number,
+  anexoId?: number
+) {
+  const caminho = anexoId
+    ? `${urlBaseApi()}/avaliacoes/${avaliacaoId}/anexo/${anexoId}`
+    : `${urlBaseApi()}/avaliacoes/${avaliacaoId}/anexo`;
+
+  const resposta = await fetch(caminho, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return tratarResposta(resposta) as Promise<Avaliacao>;
 }
