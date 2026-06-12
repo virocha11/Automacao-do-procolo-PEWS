@@ -632,6 +632,7 @@ export function PaginaHistoricoPaciente() {
                       rel="noreferrer"
                     >
                       {anexo.nomeOriginal}
+                      <DownloadOutlined style={{ marginLeft: 6 }} />
                     </Typography.Link>
                     <Popconfirm
                       title="Tem certeza que deseja excluir este anexo?"
@@ -667,6 +668,7 @@ export function PaginaHistoricoPaciente() {
                       rel="noreferrer"
                     >
                       {avaliacao.anexoNomeOriginal ?? "Anexo"}
+                      <DownloadOutlined style={{ marginLeft: 6 }} />
                     </Typography.Link>
                     <Popconfirm
                       title="Tem certeza que deseja excluir este anexo?"

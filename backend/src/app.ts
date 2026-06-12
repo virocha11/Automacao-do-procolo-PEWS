@@ -6,10 +6,31 @@ import rotasAutenticacao from "./routes/autenticacaoRoutes";
 import rotasUsuario from "./routes/usuarioRoutes";
 import rotasAvaliacao from "./routes/avaliacaoRoutes";
 import rotasPaciente from "./routes/pacienteRoutes";
+import {
+  buscarAvaliacaoAnexoPorCaminho,
+  buscarAvaliacaoPorCaminho,
+} from "./repositories/avaliacaoRepository";
 
 const app = express();
-const uploadsDir = path.join(__dirname, "..", "uploads", "avaliacoes");
+const uploadsDir = path.join(__dirname, "uploads", "avaliacoes");
+const legacyUploadsDir = path.join(__dirname, "routes", "uploads", "avaliacoes");
 fs.mkdirSync(uploadsDir, { recursive: true });
+
+function resolverCaminhoAnexo(arquivo: string) {
+  const caminhoAtual = path.join(uploadsDir, arquivo);
+
+  if (fs.existsSync(caminhoAtual)) {
+    return caminhoAtual;
+  }
+
+  const caminhoLegado = path.join(legacyUploadsDir, arquivo);
+
+  if (fs.existsSync(caminhoLegado)) {
+    return caminhoLegado;
+  }
+
+  return caminhoAtual;
+}
 
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
