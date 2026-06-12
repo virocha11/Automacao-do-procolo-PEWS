@@ -646,6 +646,24 @@ export function PaginaNovaAvaliacao() {
     }
   }
 
+  async function abrirAnexo(caminho: string) {
+    const url = `${urlBaseApi()}/anexos/${encodeURIComponent(caminho)}`;
+
+    try {
+      const resposta = await fetch(url, { method: "HEAD" });
+      if (!resposta.ok) {
+        throw new Error("Arquivo não encontrado ou foi removido.");
+      }
+      window.open(url, "_blank");
+    } catch (erro) {
+      message.error(
+        erro instanceof Error
+          ? erro.message
+          : "Não foi possível abrir o arquivo."
+      );
+    }
+  }
+
   async function finalizarAvaliacao(proximaAcao: "nova" | "inicio") {
     if (!token) {
       return;
@@ -882,6 +900,11 @@ export function PaginaNovaAvaliacao() {
                     href={`${urlBaseApi()}/anexos/${encodeURIComponent(
                       anexo.caminho
                     )}`}
+                    onClick={(evento) => {
+                      evento.preventDefault();
+                      evento.stopPropagation();
+                      void abrirAnexo(anexo.caminho);
+                    }}
                     target="_blank"
                     rel="noreferrer"
                   >

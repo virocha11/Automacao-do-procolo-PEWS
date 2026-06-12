@@ -20,6 +20,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ""),
         },
+        "/anexos": {
+          target: destinoApi,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/anexos/, "/anexos"),
+        },
       },
     },
   };

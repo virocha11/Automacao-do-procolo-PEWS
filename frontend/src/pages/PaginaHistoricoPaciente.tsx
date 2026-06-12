@@ -481,6 +481,24 @@ export function PaginaHistoricoPaciente() {
     }
   }
 
+  async function abrirAnexo(caminho: string) {
+    const url = `${urlBaseApi()}/anexos/${encodeURIComponent(caminho)}`;
+
+    try {
+      const resposta = await fetch(url, { method: "HEAD" });
+      if (!resposta.ok) {
+        throw new Error("Arquivo não encontrado ou foi removido.");
+      }
+      window.open(url, "_blank");
+    } catch (erro) {
+      message.error(
+        erro instanceof Error
+          ? erro.message
+          : "Não foi possível abrir o arquivo."
+      );
+    }
+  }
+
   async function removerAnexoAvaliacao(
     avaliacaoId: number,
     anexoId?: number
@@ -598,13 +616,18 @@ export function PaginaHistoricoPaciente() {
               Anexar
             </Button>
             {(avaliacao.anexos?.length ?? 0) > 0 || avaliacao.anexoCaminho ? (
-              <Space wrap>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {avaliacao.anexos?.map((anexo) => (
-                  <Space key={anexo.id} size="small" wrap>
+                  <Space key={anexo.id} size="small">
                     <Typography.Link
                       href={`${urlBaseApi()}/anexos/${encodeURIComponent(
                         anexo.caminho
                       )}`}
+                      onClick={(evento) => {
+                        evento.preventDefault();
+                        evento.stopPropagation();
+                        void abrirAnexo(anexo.caminho);
+                      }}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -630,11 +653,16 @@ export function PaginaHistoricoPaciente() {
                   </Space>
                 ))}
                 {avaliacao.anexoCaminho ? (
-                  <Space size="small" wrap>
+                  <Space size="small">
                     <Typography.Link
                       href={`${urlBaseApi()}/anexos/${encodeURIComponent(
                         avaliacao.anexoCaminho
                       )}`}
+                      onClick={(evento) => {
+                        evento.preventDefault();
+                        evento.stopPropagation();
+                        void abrirAnexo(avaliacao.anexoCaminho ?? "");
+                      }}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -659,7 +687,7 @@ export function PaginaHistoricoPaciente() {
                     </Popconfirm>
                   </Space>
                 ) : null}
-              </Space>
+              </div>
             ) : null}
             {usuarioAdministrador ? (
               <span onClick={(evento) => evento.stopPropagation()}>

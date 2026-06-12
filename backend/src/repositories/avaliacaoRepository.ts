@@ -92,7 +92,12 @@ export async function buscarTodasAvaliacoes(
   nomePaciente?: string,
   buscaExata = false,
   pacienteId?: number,
-  avaliador?: { id: number; nome: string }
+  avaliador?: { id: number; nome: string },
+  avaliadorNome?: string,
+  pontuacaoMin?: number,
+  pontuacaoMax?: number,
+  dataInicio?: Date,
+  dataFim?: Date
 ): Promise<Avaliacao[]> {
   const consulta = repositorio
     .createQueryBuilder("avaliacao")
@@ -125,6 +130,36 @@ export async function buscarTodasAvaliacoes(
           );
       })
     );
+  }
+
+  if (avaliadorNome) {
+    consulta.andWhere("avaliacao.avaliadorNome LIKE :avaliadorNome", {
+      avaliadorNome: `${avaliadorNome}%`,
+    });
+  }
+
+  if (pontuacaoMin !== undefined) {
+    consulta.andWhere("avaliacao.pontuacaoTotal >= :pontuacaoMin", {
+      pontuacaoMin,
+    });
+  }
+
+  if (pontuacaoMax !== undefined) {
+    consulta.andWhere("avaliacao.pontuacaoTotal <= :pontuacaoMax", {
+      pontuacaoMax,
+    });
+  }
+
+  if (dataInicio) {
+    consulta.andWhere("avaliacao.criadoEm >= :dataInicio", {
+      dataInicio,
+    });
+  }
+
+  if (dataFim) {
+    consulta.andWhere("avaliacao.criadoEm <= :dataFim", {
+      dataFim,
+    });
   }
 
   return consulta.getMany();

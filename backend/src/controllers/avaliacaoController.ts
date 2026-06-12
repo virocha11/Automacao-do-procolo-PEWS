@@ -41,6 +41,15 @@ function numeroPositivoOuNulo(valor: unknown): number | null {
   return numero && numero > 0 ? numero : null;
 }
 
+function dataOuNulo(valor: unknown): Date | null {
+  if (typeof valor !== "string") {
+    return null;
+  }
+
+  const data = new Date(valor);
+  return Number.isNaN(data.getTime()) ? null : data;
+}
+
 function pontuacao(valor: unknown): number {
   const numero = Number(valor);
 
@@ -105,6 +114,11 @@ export async function listarAvaliacoes(req: Request, res: Response) {
     const nomePaciente = textoOuNulo(req.query.nomePaciente);
     const buscaExata = req.query.exato === "true";
     const pacienteId = numeroPositivoOuNulo(req.query.pacienteId);
+    const avaliadorNome = textoOuNulo(req.query.avaliadorNome);
+    const pontuacaoMin = numeroOuNulo(req.query.pontuacaoMin);
+    const pontuacaoMax = numeroOuNulo(req.query.pontuacaoMax);
+    const dataInicio = dataOuNulo(req.query.dataInicio);
+    const dataFim = dataOuNulo(req.query.dataFim);
     const apenasMinhas = req.query.minhas === "true";
     const avaliador = apenasMinhas
       ? req.usuarioAutenticado
@@ -118,7 +132,12 @@ export async function listarAvaliacoes(req: Request, res: Response) {
       nomePaciente ?? undefined,
       buscaExata,
       pacienteId ?? undefined,
-      avaliador
+      avaliador,
+      avaliadorNome ?? undefined,
+      pontuacaoMin ?? undefined,
+      pontuacaoMax ?? undefined,
+      dataInicio ?? undefined,
+      dataFim ?? undefined
     );
 
     res.json(avaliacoes);
