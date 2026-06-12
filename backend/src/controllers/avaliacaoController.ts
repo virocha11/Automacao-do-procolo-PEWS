@@ -14,6 +14,29 @@ import {
 } from "../repositories/avaliacaoRepository";
 
 const uploadsDir = path.join(__dirname, "..", "uploads", "avaliacoes");
+const legacyUploadsDir = path.join(
+  __dirname,
+  "..",
+  "routes",
+  "uploads",
+  "avaliacoes"
+);
+
+function resolverCaminhoAnexo(caminho: string) {
+  const caminhoAtual = path.join(uploadsDir, caminho);
+
+  if (fs.existsSync(caminhoAtual)) {
+    return caminhoAtual;
+  }
+
+  const caminhoLegado = path.join(legacyUploadsDir, caminho);
+
+  if (fs.existsSync(caminhoLegado)) {
+    return caminhoLegado;
+  }
+
+  return caminhoAtual;
+}
 
 function textoOuNulo(valor: unknown): string | null {
   if (typeof valor !== "string") {
@@ -56,7 +79,7 @@ async function removerArquivoAntigo(caminho?: string | null) {
     return;
   }
 
-  const arquivoAntigo = path.join(uploadsDir, caminho);
+  const arquivoAntigo = resolverCaminhoAnexo(caminho);
 
   if (fs.existsSync(arquivoAntigo)) {
     try {
@@ -246,7 +269,7 @@ export async function excluirAnexoAvaliacao(req: Request, res: Response) {
         return res.status(404).json({ erro: "Anexo não encontrado." });
       }
 
-      const caminhoArquivo = path.join(uploadsDir, avaliacao.anexoCaminho);
+      const caminhoArquivo = resolverCaminhoAnexo(avaliacao.anexoCaminho);
       if (fs.existsSync(caminhoArquivo)) {
         await fs.promises.unlink(caminhoArquivo).catch(() => undefined);
       }
@@ -275,7 +298,7 @@ export async function excluirAnexoAvaliacao(req: Request, res: Response) {
       return res.status(404).json({ erro: "Anexo não encontrado." });
     }
 
-    const caminhoArquivo = path.join(uploadsDir, anexo.caminho);
+    const caminhoArquivo = resolverCaminhoAnexo(anexo.caminho);
     if (fs.existsSync(caminhoArquivo)) {
       await fs.promises.unlink(caminhoArquivo).catch(() => undefined);
     }

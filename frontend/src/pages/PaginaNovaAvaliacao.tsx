@@ -28,7 +28,7 @@ import {
 import { urlBaseApi } from "../api/requisicoes";
 import { useSessao } from "../contexts/SessaoContext";
 import { imprimirAvaliacao } from "../lib/impressaoAvaliacao";
-import { CloseOutlined, UploadOutlined } from "@ant-design/icons";
+import { CloseOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
 import type { CorpoCriarAvaliacao } from "../types/avaliacao";
 import type { Paciente } from "../types/paciente";
 
@@ -886,6 +886,7 @@ export function PaginaNovaAvaliacao() {
                     rel="noreferrer"
                   >
                     {anexo.nomeOriginal}
+                    <DownloadOutlined style={{ marginLeft: 6 }} />
                   </Typography.Link>
                   <Popconfirm
                     title="Tem certeza que deseja excluir este anexo?"
