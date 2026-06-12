@@ -17,7 +17,17 @@ import { exigirAutenticacao } from "../middleware/exigirAutenticacao";
 const rotas = Router();
 const uploadsDir = path.join(__dirname, "..", "uploads", "avaliacoes");
 fs.mkdirSync(uploadsDir, { recursive: true });
-const upload = multer({ dest: uploadsDir });
+
+const storage = multer.diskStorage({
+  destination: uploadsDir,
+  filename(req, file, cb) {
+    const extensao = path.extname(file.originalname);
+    const nomeGerado = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${extensao}`;
+    cb(null, nomeGerado);
+  },
+});
+
+const upload = multer({ storage });
 
 rotas.get("/avaliacoes", exigirAutenticacao, listarAvaliacoes);
 

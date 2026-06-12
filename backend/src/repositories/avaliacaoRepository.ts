@@ -72,6 +72,18 @@ export async function buscarAvaliacaoAnexoPorId(
   return repositorioAnexo.findOne({ where: { id } });
 }
 
+export async function buscarAvaliacaoAnexoPorCaminho(
+  caminho: string
+): Promise<AvaliacaoAnexo | null> {
+  return repositorioAnexo.findOne({ where: { caminho } });
+}
+
+export async function buscarAvaliacaoPorCaminho(
+  caminho: string
+): Promise<Avaliacao | null> {
+  return repositorio.findOne({ where: { anexoCaminho: caminho } });
+}
+
 export async function removerAvaliacaoAnexo(id: number): Promise<boolean> {
   const resultado = await repositorioAnexo.delete(id);
   return !!resultado.affected && resultado.affected > 0;

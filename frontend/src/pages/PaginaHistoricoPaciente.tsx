@@ -598,9 +598,13 @@ export function PaginaHistoricoPaciente() {
               Anexar
             </Button>
             {(avaliacao.anexos?.length ?? 0) > 0 || avaliacao.anexoCaminho ? (
-              <Space wrap>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 4 }}
+                onClick={(evento) => evento.stopPropagation()}
+              >
+                <Typography.Text type="secondary">Anexos:</Typography.Text>
                 {avaliacao.anexos?.map((anexo) => (
-                  <Space key={anexo.id} size="small" wrap>
+                  <Space key={anexo.id} size="small">
                     <Typography.Link
                       href={`${urlBaseApi()}/anexos/${encodeURIComponent(
                         anexo.caminho
@@ -609,6 +613,7 @@ export function PaginaHistoricoPaciente() {
                       rel="noreferrer"
                     >
                       {anexo.nomeOriginal}
+                      <DownloadOutlined style={{ marginLeft: 6 }} />
                     </Typography.Link>
                     <Popconfirm
                       title="Tem certeza que deseja excluir este anexo?"
@@ -630,7 +635,7 @@ export function PaginaHistoricoPaciente() {
                   </Space>
                 ))}
                 {avaliacao.anexoCaminho ? (
-                  <Space size="small" wrap>
+                  <Space size="small">
                     <Typography.Link
                       href={`${urlBaseApi()}/anexos/${encodeURIComponent(
                         avaliacao.anexoCaminho
@@ -639,6 +644,7 @@ export function PaginaHistoricoPaciente() {
                       rel="noreferrer"
                     >
                       {avaliacao.anexoNomeOriginal ?? "Anexo"}
+                      <DownloadOutlined style={{ marginLeft: 6 }} />
                     </Typography.Link>
                     <Popconfirm
                       title="Tem certeza que deseja excluir este anexo?"
@@ -659,7 +665,7 @@ export function PaginaHistoricoPaciente() {
                     </Popconfirm>
                   </Space>
                 ) : null}
-              </Space>
+              </div>
             ) : null}
             {usuarioAdministrador ? (
               <span onClick={(evento) => evento.stopPropagation()}>

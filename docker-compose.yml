@@ -2,7 +2,7 @@ services:
   db:
     image: mysql:8.0
     env_file:
-      - ./backend/.env 
+      - ./backend/.env
     environment:
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_ROOT_PASSWORD: ${DB_PASS}
