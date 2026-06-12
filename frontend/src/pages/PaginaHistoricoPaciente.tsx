@@ -16,11 +16,11 @@ import {
   CalendarOutlined,
   CloseOutlined,
   DeleteOutlined,
-  DownloadOutlined,
   FileAddOutlined,
   PrinterOutlined,
 } from "@ant-design/icons";
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -481,6 +481,24 @@ export function PaginaHistoricoPaciente() {
     }
   }
 
+  async function abrirAnexo(caminho: string) {
+    const url = `${urlBaseApi()}/anexos/${encodeURIComponent(caminho)}`;
+
+    try {
+      const resposta = await fetch(url, { method: "HEAD" });
+      if (!resposta.ok) {
+        throw new Error("Arquivo não encontrado ou foi removido.");
+      }
+      window.open(url, "_blank");
+    } catch (erro) {
+      message.error(
+        erro instanceof Error
+          ? erro.message
+          : "Não foi possível abrir o arquivo."
+      );
+    }
+  }
+
   async function removerAnexoAvaliacao(
     avaliacaoId: number,
     anexoId?: number
@@ -598,17 +616,18 @@ export function PaginaHistoricoPaciente() {
               Anexar
             </Button>
             {(avaliacao.anexos?.length ?? 0) > 0 || avaliacao.anexoCaminho ? (
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 4 }}
-                onClick={(evento) => evento.stopPropagation()}
-              >
-                <Typography.Text type="secondary">Anexos:</Typography.Text>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {avaliacao.anexos?.map((anexo) => (
                   <Space key={anexo.id} size="small">
                     <Typography.Link
                       href={`${urlBaseApi()}/anexos/${encodeURIComponent(
                         anexo.caminho
                       )}`}
+                      onClick={(evento) => {
+                        evento.preventDefault();
+                        evento.stopPropagation();
+                        void abrirAnexo(anexo.caminho);
+                      }}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -640,6 +659,11 @@ export function PaginaHistoricoPaciente() {
                       href={`${urlBaseApi()}/anexos/${encodeURIComponent(
                         avaliacao.anexoCaminho
                       )}`}
+                      onClick={(evento) => {
+                        evento.preventDefault();
+                        evento.stopPropagation();
+                        void abrirAnexo(avaliacao.anexoCaminho ?? "");
+                      }}
                       target="_blank"
                       rel="noreferrer"
                     >

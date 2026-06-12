@@ -66,7 +66,17 @@ export async function apiAnexarArquivoAvaliacao(
 export async function apiListarAvaliacoes(
   token: string,
   nomePaciente?: string,
-  opcoes?: { exato?: boolean; pacienteId?: number; minhas?: boolean }
+  opcoes?: {
+    exato?: boolean;
+    pacienteId?: number;
+    minhas?: boolean;
+    avaliadorId?: number;
+    avaliadorNome?: string;
+    pontuacaoMin?: number;
+    pontuacaoMax?: number;
+    dataInicio?: string;
+    dataFim?: string;
+  }
 ) {
   const parametros = new URLSearchParams();
 
@@ -84,6 +94,30 @@ export async function apiListarAvaliacoes(
 
   if (opcoes?.minhas) {
     parametros.set("minhas", "true");
+  }
+
+  if (opcoes?.avaliadorId) {
+    parametros.set("avaliadorId", String(opcoes.avaliadorId));
+  }
+
+  if (opcoes?.avaliadorNome && opcoes.avaliadorNome.trim() !== "") {
+    parametros.set("avaliadorNome", opcoes.avaliadorNome.trim());
+  }
+
+  if (opcoes?.pontuacaoMin !== undefined) {
+    parametros.set("pontuacaoMin", String(opcoes.pontuacaoMin));
+  }
+
+  if (opcoes?.pontuacaoMax !== undefined) {
+    parametros.set("pontuacaoMax", String(opcoes.pontuacaoMax));
+  }
+
+  if (opcoes?.dataInicio) {
+    parametros.set("dataInicio", opcoes.dataInicio);
+  }
+
+  if (opcoes?.dataFim) {
+    parametros.set("dataFim", opcoes.dataFim);
   }
 
   const consulta = parametros.toString();

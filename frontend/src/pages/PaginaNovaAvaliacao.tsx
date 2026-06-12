@@ -309,7 +309,7 @@ export function PaginaNovaAvaliacao() {
   const estadoNavegacao = location.state as EstadoNavegacaoAvaliacao | null;
 
   const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
-  const [gravando, setGravando] = useState(false);
+  const gravando = false;
   const [buscandoPacientes, setBuscandoPacientes] = useState(false);
   const [carregandoPacienteInicial, setCarregandoPacienteInicial] =
     useState(false);
@@ -646,48 +646,21 @@ export function PaginaNovaAvaliacao() {
     }
   }
 
-  async function finalizarAvaliacao(proximaAcao: "nova" | "inicio") {
-    if (!token) {
-      return;
-    }
+  async function abrirAnexo(caminho: string) {
+    const url = `${urlBaseApi()}/anexos/${encodeURIComponent(caminho)}`;
 
     try {
-      await form.validateFields();
-
-      const corpo = construirCorpoAvaliacao();
-      setGravando(true);
-
-      if (avaliacaoIdSalva) {
-        const avaliacaoAtualizada = await apiAtualizarAvaliacao(
-          token,
-          avaliacaoIdSalva,
-          corpo
-        );
-        setAvaliacaoIdSalva(avaliacaoAtualizada.id);
-      } else {
-        const novaAvaliacao = await apiCriarAvaliacao(token, corpo);
-        setAvaliacaoIdSalva(novaAvaliacao.id);
+      const resposta = await fetch(url, { method: "HEAD" });
+      if (!resposta.ok) {
+        throw new Error("Arquivo não encontrado ou foi removido.");
       }
-
-      message.success("Avaliação salva com sucesso.");
-
-      if (proximaAcao === "nova") {
-        novaAvaliacao();
-      } else {
-        navigate("/inicio");
-      }
-    } catch (e) {
-      if (e && typeof e === "object" && "errorFields" in e) {
-        return;
-      }
-
+      window.open(url, "_blank");
+    } catch (erro) {
       message.error(
-        e instanceof Error
-          ? e.message
-          : "Não foi possível cadastrar a avaliação."
+        erro instanceof Error
+          ? erro.message
+          : "Não foi possível abrir o arquivo."
       );
-    } finally {
-      setGravando(false);
     }
   }
 
@@ -882,6 +855,11 @@ export function PaginaNovaAvaliacao() {
                     href={`${urlBaseApi()}/anexos/${encodeURIComponent(
                       anexo.caminho
                     )}`}
+                    onClick={(evento) => {
+                      evento.preventDefault();
+                      evento.stopPropagation();
+                      void abrirAnexo(anexo.caminho);
+                    }}
                     target="_blank"
                     rel="noreferrer"
                   >
