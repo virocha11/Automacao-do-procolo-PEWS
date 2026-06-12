@@ -1,13 +1,14 @@
-import { App, Button, Input, Space, Table, Typography } from "antd";
+import { App, Button, Input, Space, Table, Typography, DatePicker, InputNumber, Row, Col } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PrinterOutlined, SearchOutlined } from "@ant-design/icons";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
 
 import { apiListarAvaliacoes } from "../api/avaliacaoServico";
 import { useSessao } from "../contexts/SessaoContext";
 import { CelulaNotificacao } from "../lib/notificacaoPews";
-import { imprimirAvaliacao } from "../lib/impressaoAvaliacao";
+import { imprimirAvaliacao, imprimirListaAvaliacoes } from "../lib/impressaoAvaliacao";
 import type { Avaliacao } from "../types/avaliacao";
 
 const verde = "#1f6b3a";
@@ -44,9 +45,42 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [nomePaciente, setNomePaciente] = useState("");
+  const [filtroAvaliador, setFiltroAvaliador] = useState("");
+  const [filtroPontuacao, setFiltroPontuacao] = useState<number | null>(null);
+  const [filtroDatas, setFiltroDatas] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [agora, setAgora] = useState(() => new Date());
   const temporizadorBusca = useRef<number | undefined>(undefined);
   const buscaAtual = useRef(0);
+
+  const avaliacoesFiltradas = useMemo(() => {
+    return avaliacoes.filter((avaliacao) => {
+      // 1. Filtro por paciente
+      const matchesPaciente =
+        !nomePaciente ||
+        avaliacao.nomePaciente?.toLowerCase().includes(nomePaciente.toLowerCase());
+
+      // 2. Filtro por avaliador
+      const matchesAvaliador =
+        !filtroAvaliador ||
+        avaliacao.avaliadorNome?.toLowerCase().includes(filtroAvaliador.toLowerCase());
+
+      // 3. Filtro por pontuação
+      const matchesPontuacao =
+        filtroPontuacao === null ||
+        avaliacao.pontuacaoTotal === filtroPontuacao;
+
+      // 4. Filtro por data (criadoEm)
+      let matchesData = true;
+      if (filtroDatas && filtroDatas[0] && filtroDatas[1]) {
+        const dataCriacao = new Date(avaliacao.criadoEm);
+        const dataInicio = filtroDatas[0].startOf("day").toDate();
+        const dataFim = filtroDatas[1].endOf("day").toDate();
+        matchesData = dataCriacao >= dataInicio && dataCriacao <= dataFim;
+      }
+
+      return matchesPaciente && matchesAvaliador && matchesPontuacao && matchesData;
+    });
+  }, [avaliacoes, nomePaciente, filtroAvaliador, filtroPontuacao, filtroDatas]);
 
   // Atualiza o relógio a cada 30 segundos para manter os countdowns precisos
   useEffect(() => {
@@ -247,26 +281,72 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
           size="large"
           style={{ width: "100%" }}
         >
-          <Typography.Title level={2} style={{ color: verde, margin: 0 }}>
-            {apenasMinhas ? "Minhas Avaliações" : "Histórico Geral"}
-          </Typography.Title>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "12px" }}>
+            <Typography.Title level={2} style={{ color: verde, margin: 0 }}>
+              {apenasMinhas ? "Minhas Avaliações" : "Histórico Geral"}
+            </Typography.Title>
+            <Button
+              type="primary"
+              icon={<PrinterOutlined />}
+              onClick={() => imprimirListaAvaliacoes(avaliacoesFiltradas, nomePaciente)}
+              disabled={avaliacoesFiltradas.length === 0}
+              style={{ backgroundColor: verde, borderColor: verde }}
+            >
+              Imprimir Resultado
+            </Button>
+          </div>
 
-          <Input.Search
-            allowClear
-            size="large"
-            placeholder="Nome do paciente"
-            value={nomePaciente}
-            enterButton={<SearchOutlined />}
-            onChange={(evento) => buscarEnquantoDigita(evento.target.value)}
-            onSearch={buscarAgora}
-            style={{ maxWidth: 570 }}
-          />
+          <Row gutter={[16, 16]} style={{ width: "100%" }}>
+            <Col xs={24} sm={12} md={8}>
+              <Input.Search
+                allowClear
+                size="large"
+                placeholder="Nome do paciente"
+                value={nomePaciente}
+                enterButton={<SearchOutlined />}
+                onChange={(evento) => buscarEnquantoDigita(evento.target.value)}
+                onSearch={buscarAgora}
+                style={{ width: "100%" }}
+              />
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Input
+                allowClear
+                size="large"
+                placeholder="Avaliador"
+                value={filtroAvaliador}
+                onChange={(evento) => setFiltroAvaliador(evento.target.value)}
+                style={{ width: "100%" }}
+              />
+            </Col>
+            <Col xs={24} sm={12} md={4}>
+              <InputNumber
+                size="large"
+                placeholder="Pontuação"
+                value={filtroPontuacao}
+                onChange={(valor) => setFiltroPontuacao(valor)}
+                min={0}
+                max={15}
+                style={{ width: "100%" }}
+              />
+            </Col>
+            <Col xs={24} sm={24} md={6}>
+              <DatePicker.RangePicker
+                size="large"
+                placeholder={["Data inicial", "Data final"]}
+                value={filtroDatas}
+                onChange={(valores) => setFiltroDatas(valores as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null)}
+                format="DD/MM/YYYY"
+                style={{ width: "100%" }}
+              />
+            </Col>
+          </Row>
 
           <Table<Avaliacao>
             rowKey="id"
             loading={carregando}
             columns={colunas}
-            dataSource={avaliacoes}
+            dataSource={avaliacoesFiltradas}
             pagination={{ pageSize: 12 }}
             bordered={false}
             rowClassName="linha-clicavel"

@@ -1,3 +1,5 @@
+import type { Avaliacao } from "../types/avaliacao";
+
 export type ImpressaoAvaliacaoDados = {
   pacienteNome: string;
   faixaEtaria?: string;
@@ -141,6 +143,149 @@ export function imprimirAvaliacao(
 </html>`;
 
   const janela = window.open("", "_blank", "width=900,height=700");
+  if (!janela) {
+    window.alert("Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups.");
+    return;
+  }
+
+  janela.document.write(html);
+  janela.document.close();
+  janela.focus();
+  janela.print();
+}
+
+export function imprimirListaAvaliacoes(
+  avaliacoes: Avaliacao[],
+  filtroPaciente: string
+) {
+  // 1. Calcular estatísticas de risco
+  let altoRisco = 0;
+  let atencao = 0;
+  let baixoRisco = 0;
+
+  avaliacoes.forEach((av) => {
+    const p = av.pontuacaoTotal;
+    if (p >= 5) altoRisco++;
+    else if (p >= 3) atencao++;
+    else baixoRisco++;
+  });
+
+  const filtroTexto = filtroPaciente.trim() ? filtroPaciente.trim() : "Todos";
+  const dataEmissao = formatarDataHora(new Date());
+
+  // 2. Construir tabela HTML
+  const linhasTabela = avaliacoes
+    .map((av) => {
+      const classif = classificarPontuacao(av.pontuacaoTotal);
+      const dataFormatada = formatarDataHora(av.criadoEm);
+      return `
+        <tr>
+          <td>${escapeHtml(av.nomePaciente)}</td>
+          <td>${escapeHtml(av.avaliadorNome)}</td>
+          <td style="text-align: center; font-weight: bold;">${av.pontuacaoTotal}</td>
+          <td style="text-align: center;">${escapeHtml(dataFormatada)}</td>
+          <td style="text-align: center;">
+            <span class="badge" style="background-color: ${classif.cor}; padding: 3px 8px; border-radius: 12px; color: #fff; font-size: 11px; font-weight: bold;">
+              ${escapeHtml(classif.texto)}
+            </span>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const html = `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Relatório de Avaliações PEWS</title>
+    <style>
+      body { font-family: Arial, sans-serif; color: #111; margin: 24px; font-size: 14px; }
+      h1 { font-size: 22px; color: #1f6b3a; margin-bottom: 4px; margin-top: 0; }
+      .header-info { display: flex; justify-content: space-between; border-bottom: 2px solid #1f6b3a; padding-bottom: 8px; margin-bottom: 20px; }
+      .info-item { margin-bottom: 4px; }
+      .info-label { font-weight: bold; }
+      
+      .stats-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+      .stat-card { border: 1px solid #ddd; border-radius: 6px; padding: 12px; text-align: center; background: #fafafa; }
+      .stat-val { font-size: 20px; font-weight: bold; margin-top: 4px; }
+      .stat-card.alto { border-left: 4px solid #f5222d; }
+      .stat-card.alto .stat-val { color: #f5222d; }
+      .stat-card.atencao { border-left: 4px solid #faad14; }
+      .stat-card.atencao .stat-val { color: #faad14; }
+      .stat-card.baixo { border-left: 4px solid #52c41a; }
+      .stat-card.baixo .stat-val { color: #52c41a; }
+      .stat-card.total { border-left: 4px solid #1f6b3a; }
+      .stat-card.total .stat-val { color: #1f6b3a; }
+      
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
+      th { background-color: #f5f5f5; font-weight: bold; color: #333; }
+      tr:nth-child(even) { background-color: #fafafa; }
+      
+      .badge { display: inline-block; text-align: center; min-width: 80px; }
+      .footer { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 8px; font-size: 11px; color: #777; text-align: center; }
+      
+      @media print {
+        body { margin: 0; }
+        .stat-card { background: #fff !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        tr { page-break-inside: avoid; }
+        th { background-color: #f5f5f5 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header-info">
+      <div>
+        <h1>Relatório de Avaliações PEWS</h1>
+        <div class="info-item"><span class="info-label">Paciente pesquisado:</span> ${escapeHtml(filtroTexto)}</div>
+      </div>
+      <div style="text-align: right; align-self: flex-end;">
+        <div class="info-item"><span class="info-label">Gerado em:</span> ${escapeHtml(dataEmissao)}</div>
+      </div>
+    </div>
+
+    <div class="stats-container">
+      <div class="stat-card total">
+        <div class="info-label">Total de Avaliações</div>
+        <div class="stat-val">${avaliacoes.length}</div>
+      </div>
+      <div class="stat-card baixo">
+        <div class="info-label">Baixo Risco</div>
+        <div class="stat-val">${baixoRisco}</div>
+      </div>
+      <div class="stat-card atencao">
+        <div class="info-label">Atenção</div>
+        <div class="stat-val">${atencao}</div>
+      </div>
+      <div class="stat-card alto">
+        <div class="info-label">Alto Risco</div>
+        <div class="stat-val">${altoRisco}</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Paciente</th>
+          <th>Avaliador</th>
+          <th style="text-align: center; width: 80px;">Pontuação</th>
+          <th style="text-align: center; width: 140px;">Data/Hora</th>
+          <th style="text-align: center; width: 110px;">Classificação</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${linhasTabela ? linhasTabela : '<tr><td colspan="5" style="text-align: center;">Nenhuma avaliação encontrada.</td></tr>'}
+      </tbody>
+    </table>
+
+    <div class="footer">
+      Relatório gerado pelo sistema PEWS.
+    </div>
+  </body>
+</html>`;
+
+  const janela = window.open("", "_blank", "width=1000,height=800");
   if (!janela) {
     window.alert("Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups.");
     return;
