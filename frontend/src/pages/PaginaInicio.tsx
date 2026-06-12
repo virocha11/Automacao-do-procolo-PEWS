@@ -154,6 +154,9 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
       width: 260,
       render: (_: unknown, registro: Avaliacao) => (
         <CelulaNotificacao avaliacao={registro} agora={agora} />
+      ),
+    },
+    {
       title: "",
       key: "acoes",
       align: "center",
