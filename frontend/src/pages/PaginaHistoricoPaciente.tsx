@@ -16,6 +16,7 @@ import {
   CalendarOutlined,
   CloseOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   FileAddOutlined,
   PrinterOutlined,
 } from "@ant-design/icons";
@@ -369,8 +370,7 @@ export function PaginaHistoricoPaciente() {
         const dadosPaciente = await apiBuscarPacientePorId(token, idPaciente);
         setPaciente(dadosPaciente);
 
-        const dados = await apiListarAvaliacoes(token, dadosPaciente.nome, {
-          exato: true,
+        const dados = await apiListarAvaliacoes(token, undefined, {
           pacienteId: idPaciente,
         });
         setAvaliacoes(ordenarPorMaisRecente(dados));
