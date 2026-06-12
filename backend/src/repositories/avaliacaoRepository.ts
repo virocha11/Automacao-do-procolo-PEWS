@@ -1,8 +1,10 @@
 import { Brackets } from "typeorm";
 import { AppDataSource } from "../config/database";
 import { Avaliacao } from "../entities/Avaliacao";
+import { AvaliacaoAnexo } from "../entities/AvaliacaoAnexo";
 
 const repositorio = AppDataSource.getRepository(Avaliacao);
+const repositorioAnexo = AppDataSource.getRepository(AvaliacaoAnexo);
 
 export type DadosCriarAvaliacao = {
   nomePaciente: string | null;
@@ -28,7 +30,17 @@ export type DadosCriarAvaliacao = {
   pontuacaoTotal: number;
   intervencao: string | null;
   tempoControleSsvv: string | null;
+  anexoCaminho?: string | null;
+  anexoNomeOriginal?: string | null;
 };
+
+export type DadosCriarAvaliacaoAnexo = {
+  avaliacaoId: number;
+  caminho: string;
+  nomeOriginal: string;
+};
+
+export type DadosAtualizarAvaliacao = Partial<DadosCriarAvaliacao>;
 
 export async function criarAvaliacao(
   dados: DadosCriarAvaliacao
@@ -36,6 +48,44 @@ export async function criarAvaliacao(
   const nova = repositorio.create(dados);
 
   return repositorio.save(nova);
+}
+
+export async function buscarAvaliacaoPorId(
+  id: number
+): Promise<Avaliacao | null> {
+  return repositorio.findOne({
+    where: { id },
+    relations: ["anexos"],
+  });
+}
+
+export async function criarAvaliacaoAnexo(
+  dados: DadosCriarAvaliacaoAnexo
+) {
+  const novoAnexo = repositorioAnexo.create(dados);
+  return repositorioAnexo.save(novoAnexo);
+}
+
+export async function buscarAvaliacaoAnexoPorId(
+  id: number
+): Promise<AvaliacaoAnexo | null> {
+  return repositorioAnexo.findOne({ where: { id } });
+}
+
+export async function removerAvaliacaoAnexo(id: number): Promise<boolean> {
+  const resultado = await repositorioAnexo.delete(id);
+  return !!resultado.affected && resultado.affected > 0;
+}
+
+export async function atualizarAvaliacao(
+  id: number,
+  dados: DadosAtualizarAvaliacao
+): Promise<Avaliacao | null> {
+  await repositorio.update(id, dados);
+  return repositorio.findOne({
+    where: { id },
+    relations: ["anexos"],
+  });
 }
 
 export async function buscarTodasAvaliacoes(
@@ -46,6 +96,7 @@ export async function buscarTodasAvaliacoes(
 ): Promise<Avaliacao[]> {
   const consulta = repositorio
     .createQueryBuilder("avaliacao")
+    .leftJoinAndSelect("avaliacao.anexos", "anexo")
     .orderBy("avaliacao.criadoEm", "DESC");
 
   if (pacienteId) {

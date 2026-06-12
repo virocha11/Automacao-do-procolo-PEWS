@@ -1,12 +1,13 @@
 import { App, Button, Input, Space, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { SearchOutlined } from "@ant-design/icons";
+import { PrinterOutlined, SearchOutlined } from "@ant-design/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { apiListarAvaliacoes } from "../api/avaliacaoServico";
 import { useSessao } from "../contexts/SessaoContext";
 import { CelulaNotificacao } from "../lib/notificacaoPews";
+import { imprimirAvaliacao } from "../lib/impressaoAvaliacao";
 import type { Avaliacao } from "../types/avaliacao";
 
 const verde = "#1f6b3a";
@@ -153,6 +154,49 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
       width: 260,
       render: (_: unknown, registro: Avaliacao) => (
         <CelulaNotificacao avaliacao={registro} agora={agora} />
+      title: "",
+      key: "acoes",
+      align: "center",
+      render: (_, registro) => (
+        <Button
+          type="default"
+          size="small"
+          icon={<PrinterOutlined />}
+          onClick={(evento) => {
+            evento.stopPropagation();
+            imprimirAvaliacao(
+              {
+                pacienteNome: registro.nomePaciente ?? "-",
+                faixaEtaria: registro.faixaEtaria ?? "-",
+                leito: registro.leito ?? "-",
+                diagnostico: registro.diagnostico ?? "-",
+                dih: registro.dih ?? "-",
+                avaliadorNome: registro.avaliadorNome ?? "-",
+                criadoEm: registro.criadoEm ?? new Date().toISOString(),
+                avaliacaoRespiratoria:
+                  registro.avaliacaoRespiratoria ?? "-",
+                pontuacaoRespiratoria: registro.pontuacaoRespiratoria ?? 0,
+                avaliacaoCardiovascular:
+                  registro.avaliacaoCardiovascular ?? "-",
+                pontuacaoCardiovascular: registro.pontuacaoCardiovascular ?? 0,
+                avaliacaoNeurologica:
+                  registro.avaliacaoNeurologica ?? "-",
+                pontuacaoNeurologica: registro.pontuacaoNeurologica ?? 0,
+                frequenciaRespiratoria: registro.frequenciaRespiratoria,
+                frequenciaCardiaca: registro.frequenciaCardiaca,
+                vigilia: registro.vigilia,
+                emesePosOperatorio: registro.emesePosOperatorio,
+                nebulizacaoResgate: registro.nebulizacaoResgate,
+                pontuacaoTotal: registro.pontuacaoTotal,
+                intervencao: registro.intervencao ?? "-",
+                tempoControleSsvv: registro.tempoControleSsvv ?? "-",
+              },
+              "Avaliação PEWS"
+            );
+          }}
+        >
+          Imprimir
+        </Button>
       ),
     },
   ];

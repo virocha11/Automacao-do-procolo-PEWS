@@ -1,4 +1,11 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from "typeorm";
+import { AvaliacaoAnexo } from "./AvaliacaoAnexo";
 
 @Entity("avaliacoes")
 export class Avaliacao {
@@ -73,6 +80,17 @@ export class Avaliacao {
 
   @Column({ type: "text", nullable: true })
   tempoControleSsvv!: string | null;
+
+  @Column({ type: "varchar", nullable: true })
+  anexoCaminho!: string | null;
+
+  @Column({ type: "varchar", nullable: true })
+  anexoNomeOriginal!: string | null;
+
+  @OneToMany(() => AvaliacaoAnexo, (anexo) => anexo.avaliacao, {
+    cascade: true,
+  })
+  anexos!: AvaliacaoAnexo[];
 
   @CreateDateColumn()
   criadoEm!: Date;

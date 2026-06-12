@@ -5,23 +5,39 @@ import {
   Form,
   Input,
   InputNumber,
+  Popconfirm,
   Select,
   Space,
   Switch,
   Typography,
 } from "antd";
-import type { CSSProperties } from "react";
+import type { ChangeEvent, CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
-import { apiCriarAvaliacao } from "../api/avaliacaoServico";
+import {
+  apiAnexarArquivoAvaliacao,
+  apiAtualizarAvaliacao,
+  apiCriarAvaliacao,
+  apiExcluirAnexoAvaliacao,
+} from "../api/avaliacaoServico";
 import {
   apiBuscarPacientePorId,
   apiListarPacientes,
 } from "../api/pacienteServico";
+import { urlBaseApi } from "../api/requisicoes";
 import { useSessao } from "../contexts/SessaoContext";
+import { imprimirAvaliacao } from "../lib/impressaoAvaliacao";
+import { CloseOutlined, UploadOutlined } from "@ant-design/icons";
 import type { CorpoCriarAvaliacao } from "../types/avaliacao";
 import type { Paciente } from "../types/paciente";
+
+type AnexoSelecionado = {
+  id: number;
+  caminho: string;
+  nomeOriginal: string;
+  criadoEm: string;
+};
 
 const { Title } = Typography;
 
@@ -296,7 +312,7 @@ export function PaginaNovaAvaliacao() {
   const navigate = useNavigate();
   const location = useLocation();
   const [parametrosBusca] = useSearchParams();
-  const { token } = useSessao();
+  const { token, usuario } = useSessao();
   const pacienteIdInicial = Number(parametrosBusca.get("pacienteId"));
   const estadoNavegacao = location.state as EstadoNavegacaoAvaliacao | null;
 
@@ -320,6 +336,10 @@ export function PaginaNovaAvaliacao() {
   const temporizadorBuscaPaciente = useRef<number | undefined>(undefined);
   const buscaPacienteAtual = useRef(0);
   const [form] = Form.useForm<ValoresFormulario>();
+  const arquivoInputRef = useRef<HTMLInputElement | null>(null);
+  const [avaliacaoIdSalva, setAvaliacaoIdSalva] = useState<number>();
+  const [anexosSelecionados, setAnexosSelecionados] = useState<AnexoSelecionado[]>([]);
+  const [anexoCarregando, setAnexoCarregando] = useState(false);
 
   const pontuacaoRespiratoria =
     Form.useWatch("pontuacaoRespiratoria", form) ?? 0;
@@ -493,6 +513,11 @@ export function PaginaNovaAvaliacao() {
 
   async function avancarSegundaEtapa() {
     await form.validateFields([
+      "nomePaciente",
+      "faixaEtaria",
+      "leito",
+      "diagnostico",
+      "dih",
       "avaliacaoRespiratoria",
       "avaliacaoCardiovascular",
       "avaliacaoNeurologica",
@@ -500,16 +525,133 @@ export function PaginaNovaAvaliacao() {
       "frequenciaCardiaca",
     ]);
 
-    const valores = form.getFieldsValue(true);
     const total =
-      Number(valores.pontuacaoRespiratoria ?? 0) +
-      Number(valores.pontuacaoCardiovascular ?? 0) +
-      Number(valores.pontuacaoNeurologica ?? 0) +
-      (valores.emesePosOperatorio ? 2 : 0) +
-      (valores.nebulizacaoResgate ? 2 : 0);
+      Number(pontuacaoRespiratoria) +
+      Number(pontuacaoCardiovascular) +
+      Number(pontuacaoNeurologica) +
+      (emesePontuada ? 2 : 0) +
+      (nebulizacaoPontuada ? 2 : 0);
 
     setPontuacaoFinalizada(total);
-    setEtapa(3);
+
+    try {
+      await salvarAvaliacaoParcial();
+      message.success("Avaliação salva com sucesso.");
+      setEtapa(3);
+    } catch (erro) {
+      message.error(
+        erro instanceof Error
+          ? erro.message
+          : "Não foi possível salvar a avaliação."
+      );
+    }
+  }
+
+  function construirCorpoAvaliacao(): CorpoCriarAvaliacao {
+    const valores = form.getFieldsValue(true);
+
+    return {
+      pacienteId: valores.pacienteId,
+      nomePaciente: texto(valores.nomePaciente),
+      faixaEtaria: texto(valores.faixaEtaria),
+      leito: texto(valores.leito),
+      diagnostico: texto(valores.diagnostico),
+      dih:
+        valores.dih !== undefined && valores.dih !== null
+          ? String(valores.dih)
+          : undefined,
+      avaliacaoRespiratoria: texto(valores.avaliacaoRespiratoria),
+      pontuacaoRespiratoria: valores.pontuacaoRespiratoria ?? 0,
+      avaliacaoCardiovascular: texto(valores.avaliacaoCardiovascular),
+      pontuacaoCardiovascular: valores.pontuacaoCardiovascular ?? 0,
+      avaliacaoNeurologica: texto(valores.avaliacaoNeurologica),
+      pontuacaoNeurologica: valores.pontuacaoNeurologica ?? 0,
+      frequenciaRespiratoria: valores.frequenciaRespiratoria,
+      frequenciaCardiaca: valores.frequenciaCardiaca,
+      vigilia: valores.vigilia ?? false,
+      emesePosOperatorio: valores.emesePosOperatorio ?? false,
+      nebulizacaoResgate: valores.nebulizacaoResgate ?? false,
+      pontuacaoTotal: pontuacaoParaIntervencao,
+      intervencao: intervencaoSugerida.intervencao,
+      tempoControleSsvv: intervencaoSugerida.tempoControleSsvv,
+    };
+  }
+
+  async function salvarAvaliacaoParcial() {
+    if (!token) {
+      throw new Error("Token ausente.");
+    }
+
+    const corpo = construirCorpoAvaliacao();
+
+    if (avaliacaoIdSalva) {
+      const avaliacaoAtualizada = await apiAtualizarAvaliacao(
+        token,
+        avaliacaoIdSalva,
+        corpo
+      );
+      setAvaliacaoIdSalva(avaliacaoAtualizada.id);
+      return avaliacaoAtualizada.id;
+    }
+
+    const novaAvaliacao = await apiCriarAvaliacao(token, corpo);
+    setAvaliacaoIdSalva(novaAvaliacao.id);
+    return novaAvaliacao.id;
+  }
+
+  async function anexarArquivoAvaliacao(evento: ChangeEvent<HTMLInputElement>) {
+    const arquivo = evento.target.files?.[0];
+
+    if (!arquivo) {
+      return;
+    }
+
+    if (!token) {
+      message.error("Usuário não autenticado.");
+      return;
+    }
+
+    if (anexosSelecionados.length >= 3) {
+      message.warning(
+        "São permitidos 3 arquivos por avaliação. Limite atingido"
+      );
+      return;
+    }
+
+    setAnexoCarregando(true);
+
+    try {
+      const avaliacaoId = await salvarAvaliacaoParcial();
+      const avaliacaoAtualizada = await apiAnexarArquivoAvaliacao(
+        token,
+        avaliacaoId,
+        arquivo
+      );
+
+      setAnexosSelecionados(avaliacaoAtualizada.anexos ?? [
+        ...anexosSelecionados,
+        {
+          id: Date.now(),
+          caminho: avaliacaoAtualizada.anexoCaminho ?? arquivo.name,
+          nomeOriginal:
+            avaliacaoAtualizada.anexoNomeOriginal ?? arquivo.name,
+          criadoEm: new Date().toISOString(),
+        },
+      ]);
+      setAvaliacaoIdSalva(avaliacaoAtualizada.id);
+      message.success("Arquivo anexado com sucesso.");
+    } catch (e) {
+      message.error(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível anexar o arquivo."
+      );
+    } finally {
+      setAnexoCarregando(false);
+      if (arquivoInputRef.current) {
+        arquivoInputRef.current.value = "";
+      }
+    }
   }
 
   async function finalizarAvaliacao(proximaAcao: "nova" | "inicio") {
@@ -520,36 +662,22 @@ export function PaginaNovaAvaliacao() {
     try {
       await form.validateFields();
 
-      const valores = form.getFieldsValue(true);
-      const corpo: CorpoCriarAvaliacao = {
-        pacienteId: valores.pacienteId,
-        nomePaciente: texto(valores.nomePaciente),
-        faixaEtaria: texto(valores.faixaEtaria),
-        leito: texto(valores.leito),
-        diagnostico: texto(valores.diagnostico),
-        dih:
-          valores.dih !== undefined && valores.dih !== null
-            ? String(valores.dih)
-            : undefined,
-        avaliacaoRespiratoria: texto(valores.avaliacaoRespiratoria),
-        pontuacaoRespiratoria: valores.pontuacaoRespiratoria ?? 0,
-        avaliacaoCardiovascular: texto(valores.avaliacaoCardiovascular),
-        pontuacaoCardiovascular: valores.pontuacaoCardiovascular ?? 0,
-        avaliacaoNeurologica: texto(valores.avaliacaoNeurologica),
-        pontuacaoNeurologica: valores.pontuacaoNeurologica ?? 0,
-        frequenciaRespiratoria: valores.frequenciaRespiratoria,
-        frequenciaCardiaca: valores.frequenciaCardiaca,
-        vigilia: valores.vigilia ?? false,
-        emesePosOperatorio: valores.emesePosOperatorio ?? false,
-        nebulizacaoResgate: valores.nebulizacaoResgate ?? false,
-        pontuacaoTotal: pontuacaoParaIntervencao,
-        intervencao: intervencaoSugerida.intervencao,
-        tempoControleSsvv: intervencaoSugerida.tempoControleSsvv,
-      };
-
+      const corpo = construirCorpoAvaliacao();
       setGravando(true);
-      await apiCriarAvaliacao(token, corpo);
-      message.success("Avaliação cadastrada.");
+
+      if (avaliacaoIdSalva) {
+        const avaliacaoAtualizada = await apiAtualizarAvaliacao(
+          token,
+          avaliacaoIdSalva,
+          corpo
+        );
+        setAvaliacaoIdSalva(avaliacaoAtualizada.id);
+      } else {
+        const novaAvaliacao = await apiCriarAvaliacao(token, corpo);
+        setAvaliacaoIdSalva(novaAvaliacao.id);
+      }
+
+      message.success("Avaliação salva com sucesso.");
 
       if (proximaAcao === "nova") {
         novaAvaliacao();
@@ -581,8 +709,51 @@ export function PaginaNovaAvaliacao() {
     setPontuacaoFinalizada(undefined);
     setEmesePontuada(false);
     setNebulizacaoPontuada(false);
+    setAvaliacaoIdSalva(undefined);
+    setAnexosSelecionados([]);
     setEtapa(1);
   }
+
+  const imprimirAvaliacaoAtual = useCallback(async () => {
+    try {
+      await form.validateFields();
+
+      const valores = form.getFieldsValue(true);
+
+      imprimirAvaliacao(
+        {
+          pacienteNome: texto(valores.nomePaciente) ?? "-",
+          faixaEtaria: texto(valores.faixaEtaria),
+          leito: texto(valores.leito),
+          diagnostico: texto(valores.diagnostico),
+          dih: valores.dih,
+          avaliadorNome: usuario?.nome,
+          criadoEm: new Date().toISOString(),
+          avaliacaoRespiratoria: texto(valores.avaliacaoRespiratoria),
+          pontuacaoRespiratoria: valores.pontuacaoRespiratoria ?? 0,
+          avaliacaoCardiovascular: texto(valores.avaliacaoCardiovascular),
+          pontuacaoCardiovascular: valores.pontuacaoCardiovascular ?? 0,
+          avaliacaoNeurologica: texto(valores.avaliacaoNeurologica),
+          pontuacaoNeurologica: valores.pontuacaoNeurologica ?? 0,
+          frequenciaRespiratoria: valores.frequenciaRespiratoria,
+          frequenciaCardiaca: valores.frequenciaCardiaca,
+          vigilia: valores.vigilia ?? false,
+          emesePosOperatorio: valores.emesePosOperatorio ?? false,
+          nebulizacaoResgate: valores.nebulizacaoResgate ?? false,
+          pontuacaoTotal: pontuacaoParaIntervencao,
+          intervencao: intervencaoSugerida.intervencao,
+          tempoControleSsvv: intervencaoSugerida.tempoControleSsvv,
+        },
+        "Avaliação PEWS"
+      );
+    } catch (e) {
+      message.error(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível gerar a impressão."
+      );
+    }
+  }, [form, intervencaoSugerida, message, pontuacaoParaIntervencao, usuario?.nome]);
 
   function renderNavegacaoEtapas() {
     return (
@@ -675,6 +846,95 @@ export function PaginaNovaAvaliacao() {
           nebulizacaoResgate: false,
         }}
       >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+            marginBottom: 16,
+          }}
+        >
+          <input
+            ref={arquivoInputRef}
+            type="file"
+            accept="*/*"
+            style={{ display: "none" }}
+            hidden
+            onChange={anexarArquivoAvaliacao}
+          />
+          <Button
+            type="default"
+            icon={<UploadOutlined />}
+            loading={anexoCarregando}
+            onClick={() => {
+              if (anexosSelecionados.length >= 3) {
+                message.warning(
+                  "São permitidos 3 arquivos por avaliação. Limite atingido"
+                );
+                return;
+              }
+
+              arquivoInputRef.current?.click();
+            }}
+          >
+            Anexar arquivo
+          </Button>
+          {anexosSelecionados.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <Typography.Text type="secondary">Anexos:</Typography.Text>
+              {anexosSelecionados.map((anexo) => (
+                <Space key={anexo.id} size="small">
+                  <Typography.Link
+                    href={`${urlBaseApi()}/anexos/${encodeURIComponent(
+                      anexo.caminho
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {anexo.nomeOriginal}
+                  </Typography.Link>
+                  <Popconfirm
+                    title="Tem certeza que deseja excluir este anexo?"
+                    okText="Excluir"
+                    cancelText="Cancelar"
+                    onConfirm={() => {
+                      if (!avaliacaoIdSalva) {
+                        return;
+                      }
+
+                      void apiExcluirAnexoAvaliacao(
+                        token ?? "",
+                        avaliacaoIdSalva,
+                        anexo.id
+                      )
+                        .then((avaliacaoAtualizada) => {
+                          setAnexosSelecionados(
+                            avaliacaoAtualizada.anexos ?? []
+                          );
+                          message.success("Anexo excluído com sucesso.");
+                        })
+                        .catch((erro) => {
+                          message.error(
+                            erro instanceof Error
+                              ? erro.message
+                              : "Não foi possível excluir o anexo."
+                          );
+                        });
+                    }}
+                  >
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<CloseOutlined />}
+                    />
+                  </Popconfirm>
+                </Space>
+              ))}
+            </div>
+          ) : null}
+        </div>
         {etapa === 1 ? (
           <Space direction="vertical" size="large" style={{ width: "100%" }}>
             <Title
@@ -1090,35 +1350,48 @@ export function PaginaNovaAvaliacao() {
 
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr auto 1fr",
+                display: "flex",
+                justifyContent: "center",
                 gap: 16,
-                alignItems: "center",
                 marginTop: 140,
               }}
             >
               <Button
                 type="primary"
-                style={botaoVoltar}
-                onClick={() => setEtapa(2)}
+                style={{
+                  ...botaoPrincipal,
+                  minWidth: 240,
+                  width: 240,
+                }}
+                onClick={() => void imprimirAvaliacaoAtual()}
               >
-                Voltar
+                Imprimir
               </Button>
               <Button
                 type="primary"
-                style={botaoPrincipal}
-                loading={gravando}
-                onClick={() => void finalizarAvaliacao("nova")}
+                style={{
+                  ...botaoPrincipal,
+                  minWidth: 240,
+                  width: 240,
+                }}
+                onClick={() => {
+                  const nome = texto(form.getFieldValue("nomePaciente"));
+                  const pacienteId = form.getFieldValue("pacienteId");
+
+                  if (pacienteId) {
+                    navigate(`/historico/paciente/${pacienteId}`);
+                    return;
+                  }
+
+                  if (nome) {
+                    navigate(`/historico/paciente/${encodeURIComponent(nome)}`);
+                    return;
+                  }
+
+                  navigate("/inicio");
+                }}
               >
-                Nova Avaliação
-              </Button>
-              <Button
-                type="primary"
-                style={{ ...botaoPrincipal, justifySelf: "end" }}
-                loading={gravando}
-                onClick={() => void finalizarAvaliacao("inicio")}
-              >
-                Início
+                Histórico de {texto(form.getFieldValue("nomePaciente"))}
               </Button>
             </div>
           </Space>
