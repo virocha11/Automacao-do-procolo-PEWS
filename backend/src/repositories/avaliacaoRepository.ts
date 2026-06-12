@@ -93,6 +93,7 @@ export async function buscarTodasAvaliacoes(
   buscaExata = false,
   pacienteId?: number,
   avaliador?: { id: number; nome: string },
+  avaliadorId?: number,
   avaliadorNome?: string,
   pontuacaoMin?: number,
   pontuacaoMax?: number,
@@ -130,6 +131,12 @@ export async function buscarTodasAvaliacoes(
           );
       })
     );
+  }
+
+  if (avaliadorId) {
+    consulta.andWhere("avaliacao.avaliadorId = :avaliadorId", {
+      avaliadorId,
+    });
   }
 
   if (avaliadorNome) {

@@ -70,6 +70,7 @@ export async function apiListarAvaliacoes(
     exato?: boolean;
     pacienteId?: number;
     minhas?: boolean;
+    avaliadorId?: number;
     avaliadorNome?: string;
     pontuacaoMin?: number;
     pontuacaoMax?: number;
@@ -93,6 +94,10 @@ export async function apiListarAvaliacoes(
 
   if (opcoes?.minhas) {
     parametros.set("minhas", "true");
+  }
+
+  if (opcoes?.avaliadorId) {
+    parametros.set("avaliadorId", String(opcoes.avaliadorId));
   }
 
   if (opcoes?.avaliadorNome && opcoes.avaliadorNome.trim() !== "") {

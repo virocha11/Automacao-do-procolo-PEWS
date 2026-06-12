@@ -114,6 +114,7 @@ export async function listarAvaliacoes(req: Request, res: Response) {
     const nomePaciente = textoOuNulo(req.query.nomePaciente);
     const buscaExata = req.query.exato === "true";
     const pacienteId = numeroPositivoOuNulo(req.query.pacienteId);
+    const avaliadorId = numeroPositivoOuNulo(req.query.avaliadorId);
     const avaliadorNome = textoOuNulo(req.query.avaliadorNome);
     const pontuacaoMin = numeroOuNulo(req.query.pontuacaoMin);
     const pontuacaoMax = numeroOuNulo(req.query.pontuacaoMax);
@@ -133,6 +134,7 @@ export async function listarAvaliacoes(req: Request, res: Response) {
       buscaExata,
       pacienteId ?? undefined,
       avaliador,
+      avaliadorId ?? undefined,
       avaliadorNome ?? undefined,
       pontuacaoMin ?? undefined,
       pontuacaoMax ?? undefined,

@@ -5,10 +5,11 @@ import { App as AntdApp, ConfigProvider } from "antd";
 import ptBR from "antd/locale/pt_BR";
 import dayjs from "dayjs";
 import "dayjs/locale/pt-br";
-dayjs.locale("pt-br");
 import "./index.css";
 import App from "./App.tsx";
 import { ProvedorSessao } from "./contexts/SessaoContext.tsx";
+
+dayjs.locale("pt-br");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

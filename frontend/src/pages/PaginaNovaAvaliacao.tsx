@@ -309,7 +309,7 @@ export function PaginaNovaAvaliacao() {
   const estadoNavegacao = location.state as EstadoNavegacaoAvaliacao | null;
 
   const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
-  const [gravando, setGravando] = useState(false);
+  const gravando = false;
   const [buscandoPacientes, setBuscandoPacientes] = useState(false);
   const [carregandoPacienteInicial, setCarregandoPacienteInicial] =
     useState(false);
@@ -661,51 +661,6 @@ export function PaginaNovaAvaliacao() {
           ? erro.message
           : "Não foi possível abrir o arquivo."
       );
-    }
-  }
-
-  async function finalizarAvaliacao(proximaAcao: "nova" | "inicio") {
-    if (!token) {
-      return;
-    }
-
-    try {
-      await form.validateFields();
-
-      const corpo = construirCorpoAvaliacao();
-      setGravando(true);
-
-      if (avaliacaoIdSalva) {
-        const avaliacaoAtualizada = await apiAtualizarAvaliacao(
-          token,
-          avaliacaoIdSalva,
-          corpo
-        );
-        setAvaliacaoIdSalva(avaliacaoAtualizada.id);
-      } else {
-        const novaAvaliacao = await apiCriarAvaliacao(token, corpo);
-        setAvaliacaoIdSalva(novaAvaliacao.id);
-      }
-
-      message.success("Avaliação salva com sucesso.");
-
-      if (proximaAcao === "nova") {
-        novaAvaliacao();
-      } else {
-        navigate("/inicio");
-      }
-    } catch (e) {
-      if (e && typeof e === "object" && "errorFields" in e) {
-        return;
-      }
-
-      message.error(
-        e instanceof Error
-          ? e.message
-          : "Não foi possível cadastrar a avaliação."
-      );
-    } finally {
-      setGravando(false);
     }
   }
 
