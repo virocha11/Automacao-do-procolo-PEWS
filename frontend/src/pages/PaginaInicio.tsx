@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 import { apiListarAvaliacoes } from "../api/avaliacaoServico";
 import { useSessao } from "../contexts/SessaoContext";
+import { CelulaNotificacao } from "../lib/notificacaoPews";
 import type { Avaliacao } from "../types/avaliacao";
 
 const verde = "#1f6b3a";
@@ -42,8 +43,18 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [nomePaciente, setNomePaciente] = useState("");
+  const [agora, setAgora] = useState(() => new Date());
   const temporizadorBusca = useRef<number | undefined>(undefined);
   const buscaAtual = useRef(0);
+
+  // Atualiza o relógio a cada 30 segundos para manter os countdowns precisos
+  useEffect(() => {
+    const intervalo = window.setInterval(() => {
+      setAgora(new Date());
+    }, 30_000);
+
+    return () => window.clearInterval(intervalo);
+  }, []);
 
   const carregarAvaliacoes = useCallback(
     async (filtroNome: string, idBusca = buscaAtual.current) => {
@@ -134,6 +145,15 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
       key: "criadoEm",
       align: "center",
       render: (valor: string | null | undefined) => formatarDataHora(valor),
+    },
+    {
+      title: "Notificação",
+      key: "notificacao",
+      align: "center",
+      width: 260,
+      render: (_: unknown, registro: Avaliacao) => (
+        <CelulaNotificacao avaliacao={registro} agora={agora} />
+      ),
     },
   ];
 
