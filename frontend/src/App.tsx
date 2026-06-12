@@ -10,6 +10,7 @@ import { PaginaNovaAvaliacao } from "./pages/PaginaNovaAvaliacao";
 import { PaginaPacientes } from "./pages/PaginaPacientes";
 import { PaginaHistoricoPaciente } from "./pages/PaginaHistoricoPaciente";
 import { PaginaManualPews } from "./pages/PaginaManualPews";
+import { PaginaLogsSistema } from "./pages/PaginaLogsSistema";
 
 function RotaInicial() {
   const { token } = useSessao();
@@ -60,6 +61,14 @@ export default function App() {
         <Route
           path="/cadastros/pacientes"
           element={<PaginaPacientes />}
+        />
+        <Route
+          path="/logs"
+          element={
+            <RotaSomenteAdmin>
+              <PaginaLogsSistema />
+            </RotaSomenteAdmin>
+          }
         />
         <Route path="/manual-pews" element={<PaginaManualPews />} />
 

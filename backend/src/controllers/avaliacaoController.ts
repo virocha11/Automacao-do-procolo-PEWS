@@ -12,6 +12,14 @@ import {
   removerAvaliacao,
   removerAvaliacaoAnexo,
 } from "../repositories/avaliacaoRepository";
+import {
+  AcaoLogSistema,
+  EntidadeLogSistema,
+} from "../entities/LogSistema";
+import {
+  DadosCriarLogSistema,
+  registrarLogSistema,
+} from "../repositories/logSistemaRepository";
 
 const uploadsDir = path.join(__dirname, "..", "uploads", "avaliacoes");
 const legacyUploadsDir = path.join(
@@ -81,6 +89,14 @@ function pontuacao(valor: unknown): number {
 
 function booleano(valor: unknown): boolean {
   return valor === true;
+}
+
+async function registrarAuditoria(dados: DadosCriarLogSistema) {
+  try {
+    await registrarLogSistema(dados);
+  } catch (erro) {
+    console.error("Não foi possível registrar log de auditoria:", erro);
+  }
 }
 
 async function removerArquivoAntigo(caminho?: string | null) {
@@ -182,6 +198,16 @@ export async function cadastrarAvaliacao(req: Request, res: Response) {
 
     const avaliacao = await criarAvaliacao(dados);
 
+    await registrarAuditoria({
+      usuarioId: req.usuarioAutenticado?.id,
+      usuarioNome: req.usuarioAutenticado?.nome,
+      acao: AcaoLogSistema.AVALIACAO_CRIADA,
+      entidade: EntidadeLogSistema.AVALIACAO,
+      entidadeId: avaliacao.id,
+      descricao: `Avaliação criada para ${avaliacao.nomePaciente ?? "paciente sem nome"}.`,
+      dadosDepois: avaliacao,
+    });
+
     res.status(201).json(avaliacao);
   } catch (erro) {
     console.error(erro);
@@ -215,6 +241,17 @@ export async function atualizarAvaliacao(req: Request, res: Response) {
     if (!avaliacaoAtualizada) {
       return res.status(404).json({ erro: "Avaliação não encontrada." });
     }
+
+    await registrarAuditoria({
+      usuarioId: req.usuarioAutenticado?.id,
+      usuarioNome: req.usuarioAutenticado?.nome,
+      acao: AcaoLogSistema.AVALIACAO_EDITADA,
+      entidade: EntidadeLogSistema.AVALIACAO,
+      entidadeId: avaliacaoAtualizada.id,
+      descricao: `Avaliação #${avaliacaoAtualizada.id} editada.`,
+      dadosAntes: avaliacao,
+      dadosDepois: avaliacaoAtualizada,
+    });
 
     res.json(avaliacaoAtualizada);
   } catch (erro) {
@@ -251,7 +288,7 @@ export async function anexarArquivoAvaliacao(req: Request, res: Response) {
       });
     }
 
-    await criarAvaliacaoAnexo({
+    const anexoCriado = await criarAvaliacaoAnexo({
       avaliacaoId: id,
       caminho: arquivo.filename,
       nomeOriginal: arquivo.originalname,
@@ -262,6 +299,16 @@ export async function anexarArquivoAvaliacao(req: Request, res: Response) {
     if (!avaliacaoAtualizada) {
       return res.status(500).json({ erro: "Não foi possível anexar o arquivo." });
     }
+
+    await registrarAuditoria({
+      usuarioId: req.usuarioAutenticado?.id,
+      usuarioNome: req.usuarioAutenticado?.nome,
+      acao: AcaoLogSistema.ANEXO_ADICIONADO,
+      entidade: EntidadeLogSistema.ANEXO,
+      entidadeId: anexoCriado.id,
+      descricao: `Anexo "${anexoCriado.nomeOriginal}" adicionado à avaliação #${id}.`,
+      dadosDepois: anexoCriado,
+    });
 
     res.json(avaliacaoAtualizada);
   } catch (erro) {
@@ -304,6 +351,19 @@ export async function excluirAnexoAvaliacao(req: Request, res: Response) {
         return res.status(500).json({ erro: "Não foi possível excluir o anexo." });
       }
 
+      await registrarAuditoria({
+        usuarioId: req.usuarioAutenticado?.id,
+        usuarioNome: req.usuarioAutenticado?.nome,
+        acao: AcaoLogSistema.ANEXO_EXCLUIDO,
+        entidade: EntidadeLogSistema.ANEXO,
+        entidadeId: avaliacaoId,
+        descricao: `Anexo legado "${avaliacao.anexoNomeOriginal ?? avaliacao.anexoCaminho}" excluído da avaliação #${avaliacaoId}.`,
+        dadosAntes: {
+          caminho: avaliacao.anexoCaminho,
+          nomeOriginal: avaliacao.anexoNomeOriginal,
+        },
+      });
+
       return res.json(avaliacaoAtualizada);
     }
 
@@ -336,6 +396,16 @@ export async function excluirAnexoAvaliacao(req: Request, res: Response) {
       return res.status(404).json({ erro: "Avaliação não encontrada." });
     }
 
+    await registrarAuditoria({
+      usuarioId: req.usuarioAutenticado?.id,
+      usuarioNome: req.usuarioAutenticado?.nome,
+      acao: AcaoLogSistema.ANEXO_EXCLUIDO,
+      entidade: EntidadeLogSistema.ANEXO,
+      entidadeId: anexo.id,
+      descricao: `Anexo "${anexo.nomeOriginal}" excluído da avaliação #${avaliacaoId}.`,
+      dadosAntes: anexo,
+    });
+
     res.json(avaliacaoAtualizada);
   } catch (erro) {
     console.error(erro);
@@ -351,11 +421,22 @@ export async function excluirAvaliacao(req: Request, res: Response) {
       return res.status(400).json({ erro: "ID inválido." });
     }
 
+    const avaliacao = await buscarAvaliacaoPorId(id);
     const removida = await removerAvaliacao(id);
 
     if (!removida) {
       return res.status(404).json({ erro: "Avaliação não encontrada." });
     }
+
+    await registrarAuditoria({
+      usuarioId: req.usuarioAutenticado?.id,
+      usuarioNome: req.usuarioAutenticado?.nome,
+      acao: AcaoLogSistema.AVALIACAO_EXCLUIDA,
+      entidade: EntidadeLogSistema.AVALIACAO,
+      entidadeId: id,
+      descricao: `Avaliação #${id} excluída.`,
+      dadosAntes: avaliacao,
+    });
 
     res.json({ mensagem: "Avaliação removida com sucesso." });
   } catch (erro) {

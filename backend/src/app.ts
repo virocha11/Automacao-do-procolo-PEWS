@@ -5,6 +5,7 @@ import path from "path";
 import rotasAutenticacao from "./routes/autenticacaoRoutes";
 import rotasUsuario from "./routes/usuarioRoutes";
 import rotasAvaliacao from "./routes/avaliacaoRoutes";
+import rotasLogSistema from "./routes/logSistemaRoutes";
 import rotasPaciente from "./routes/pacienteRoutes";
 import {
   buscarAvaliacaoAnexoPorCaminho,
@@ -57,6 +58,7 @@ app.use("/anexos", express.static(uploadsDir));
 app.use(rotasAutenticacao);
 app.use(rotasUsuario);
 app.use(rotasAvaliacao);
+app.use(rotasLogSistema);
 app.use(rotasPaciente);
 
 export default app;

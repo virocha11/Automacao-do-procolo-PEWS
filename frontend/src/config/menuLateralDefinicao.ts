@@ -40,6 +40,13 @@ export const arvoreMenuLateral: NoMenuLateral[] = [
       },
     ],
   },
+  {
+    tipo: "item",
+    chave: "logs-sistema",
+    rota: "/logs",
+    rotulo: "Logs do sistema",
+    podeVer: (f) => f === CODIGO_FUNCAO_ADMINISTRADOR,
+  },
 ];
 
 export function filtrarMenuPorFuncao(
