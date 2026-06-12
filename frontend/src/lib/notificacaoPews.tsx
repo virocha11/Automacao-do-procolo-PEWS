@@ -23,6 +23,16 @@ export function obterIntervaloPewsMinutos(pontuacao: number): number | null {
   return 0;
 }
 
+/** Formata um valor em minutos em um texto legível (ex: "4h30min" ou "45 minutos"). */
+export function formatarTempo(minutos: number, resumido = false): string {
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  if (h > 0) {
+    return `${h}h${m > 0 ? `${m}min` : ""}`;
+  }
+  return resumido ? `${minutos} min` : `${minutos} minutos`;
+}
+
 /** Retorna o intervalo em minutos para verificação de sinais vitais. */
 export function obterIntervaloSsvvMinutos(
   pontuacao: number,
@@ -108,30 +118,19 @@ export function calcularNotificacao(
 
     if (restantePews <= 0) {
       const atraso = Math.abs(restantePews);
-      textoPews =
-        atraso >= 60
-          ? `PEWS atrasado ${Math.floor(atraso / 60)}h${atraso % 60 > 0 ? `${atraso % 60}min` : ""}`
-          : `PEWS atrasado ${atraso} min`;
-      tooltipPews = `O PEWS deveria ter sido reavaliado há ${atraso} min`;
+      textoPews = `PEWS atrasado ${formatarTempo(atraso, true)}`;
+      tooltipPews = `O PEWS deveria ter sido reavaliado há ${formatarTempo(atraso, false)}`;
       tipoPews = "atrasado";
-    } else if (restantePews <= 10) {
-      textoPews = `Avaliar PEWS em ${restantePews} min`;
-      tooltipPews = `Reavaliação do PEWS em ${restantePews} minutos`;
-      tipoPews = "urgente";
-    } else if (restantePews <= 30) {
-      textoPews = `Avaliar PEWS em ${restantePews} min`;
-      tooltipPews = `Reavaliação do PEWS em ${restantePews} minutos`;
-      tipoPews = "proximo";
     } else {
-      const hPews = Math.floor(restantePews / 60);
-      const mPews = restantePews % 60;
-      const tempoFormatado =
-        hPews > 0
-          ? `${hPews}h${mPews > 0 ? `${mPews}min` : ""}`
-          : `${restantePews} min`;
-      textoPews = `Avaliar PEWS em ${tempoFormatado}`;
-      tooltipPews = `Reavaliação do PEWS em ${restantePews} minutos`;
-      tipoPews = "emDia";
+      textoPews = `Avaliar PEWS em ${formatarTempo(restantePews, true)}`;
+      tooltipPews = `Reavaliação do PEWS em ${formatarTempo(restantePews, false)}`;
+      if (restantePews <= 10) {
+        tipoPews = "urgente";
+      } else if (restantePews <= 30) {
+        tipoPews = "proximo";
+      } else {
+        tipoPews = "emDia";
+      }
     }
   } else {
     textoPews = "-";
@@ -159,25 +158,18 @@ export function calcularNotificacao(
 
     if (proximoEm <= 0) {
       textoSsvv = "Verificar Sinais Vitais";
-      tooltipSsvv = `Verificação de sinais vitais atrasada (a cada ${intervaloSsvv >= 60 ? `${intervaloSsvv / 60}h` : `${intervaloSsvv}min`})`;
+      tooltipSsvv = `Verificação de sinais vitais atrasada (a cada ${formatarTempo(intervaloSsvv, false)})`;
       tipoSsvv = "atrasado";
-    } else if (proximoEm <= 15) {
-      textoSsvv = `Sinais Vitais em ${proximoEm} min`;
-      tooltipSsvv = `Próxima verificação de sinais vitais em ${proximoEm} minutos`;
-      tipoSsvv = "urgente";
-    } else if (proximoEm <= 30) {
-      textoSsvv = `Sinais Vitais em ${proximoEm} min`;
-      tooltipSsvv = `Próxima verificação de sinais vitais em ${proximoEm} minutos`;
-      tipoSsvv = "proximo";
     } else {
-      const horas = Math.floor(proximoEm / 60);
-      const minutos = proximoEm % 60;
-      textoSsvv =
-        horas > 0
-          ? `Sinais Vitais em ${horas}h${minutos > 0 ? `${minutos}min` : ""}`
-          : `Sinais Vitais em ${proximoEm} min`;
-      tooltipSsvv = `Próxima verificação de sinais vitais em ${proximoEm} minutos`;
-      tipoSsvv = "emDia";
+      textoSsvv = `Sinais Vitais em ${formatarTempo(proximoEm, true)}`;
+      tooltipSsvv = `Próxima verificação de sinais vitais em ${formatarTempo(proximoEm, false)}`;
+      if (proximoEm <= 15) {
+        tipoSsvv = "urgente";
+      } else if (proximoEm <= 30) {
+        tipoSsvv = "proximo";
+      } else {
+        tipoSsvv = "emDia";
+      }
     }
   } else {
     textoSsvv = "-";
