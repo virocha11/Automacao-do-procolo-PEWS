@@ -1,17 +1,53 @@
-import { App, Button, Input, Space, Table, Typography } from "antd";
+import {
+  App,
+  Button,
+  DatePicker,
+  Input,
+  Select,
+  Space,
+  Table,
+  Typography,
+} from "antd";
+import datePickerPtBR from "antd/es/date-picker/locale/pt_BR";
 import type { ColumnsType } from "antd/es/table";
-import { PrinterOutlined, SearchOutlined } from "@ant-design/icons";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { Dayjs } from "dayjs";
+import "dayjs/locale/pt-br";
+import { PrinterOutlined } from "@ant-design/icons";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { apiListarAvaliacoes } from "../api/avaliacaoServico";
+import { apiListarUsuarios } from "../api/usuariosServico";
 import { useSessao } from "../contexts/SessaoContext";
 import { CelulaNotificacao } from "../lib/notificacaoPews";
 import { imprimirAvaliacao } from "../lib/impressaoAvaliacao";
+import {
+  imprimirAvaliacao,
+  imprimirRelatorioAvaliacoes,
+} from "../lib/impressaoAvaliacao";
 import type { Avaliacao } from "../types/avaliacao";
+import type { Usuario } from "../types/usuario";
 
 const verde = "#1f6b3a";
 const verdeClaro = "#88a98f";
+const { RangePicker } = DatePicker;
+
+type PeriodoFiltro = [Dayjs | null, Dayjs | null] | null;
+type CategoriaPontuacao = "baixo" | "atencao" | "alto";
+
+type FiltrosHistorico = {
+  nomePaciente: string;
+  avaliadorId: number | null;
+  pontuacao: CategoriaPontuacao | null;
+  periodo: PeriodoFiltro;
+};
+
+const filtrosIniciais: FiltrosHistorico = {
+  nomePaciente: "",
+  avaliadorId: null,
+  pontuacao: null,
+  periodo: null,
+};
 
 function formatarDataHora(valor: string | null | undefined): string {
   if (!valor) {
@@ -33,6 +69,30 @@ function formatarDataHora(valor: string | null | undefined): string {
   }).format(data);
 }
 
+function obterIntervaloPontuacao(categoria: CategoriaPontuacao | null) {
+  switch (categoria) {
+    case "baixo":
+      return { pontuacaoMin: 0, pontuacaoMax: 2 };
+    case "atencao":
+      return { pontuacaoMin: 3, pontuacaoMax: 4 };
+    case "alto":
+      return { pontuacaoMin: 5, pontuacaoMax: undefined };
+    default:
+      return { pontuacaoMin: undefined, pontuacaoMax: undefined };
+  }
+}
+
+function prepararPeriodo(periodo: PeriodoFiltro) {
+  if (!periodo?.[0] || !periodo[1]) {
+    return { dataInicio: undefined, dataFim: undefined };
+  }
+
+  return {
+    dataInicio: periodo[0].startOf("day").toISOString(),
+    dataFim: periodo[1].endOf("day").toISOString(),
+  };
+}
+
 type PropsPaginaInicio = {
   apenasMinhas?: boolean;
 };
@@ -42,11 +102,25 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
   const navigate = useNavigate();
   const { token } = useSessao();
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [nomePaciente, setNomePaciente] = useState("");
   const [agora, setAgora] = useState(() => new Date());
   const temporizadorBusca = useRef<number | undefined>(undefined);
   const buscaAtual = useRef(0);
+  const [filtros, setFiltros] = useState<FiltrosHistorico>(filtrosIniciais);
+
+  const opcoesAvaliador = useMemo(() => {
+    return [...usuarios]
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+      .map((usuario) => ({ label: usuario.nome, value: usuario.id }));
+  }, [usuarios]);
+
+  const opcoesPontuacao = [
+    { label: "0-2 baixo risco", value: "baixo" },
+    { label: "3-4 atenção", value: "atencao" },
+    { label: "5+ alto risco", value: "alto" },
+  ];
 
   // Atualiza o relógio a cada 30 segundos para manter os countdowns precisos
   useEffect(() => {
@@ -58,7 +132,7 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
   }, []);
 
   const carregarAvaliacoes = useCallback(
-    async (filtroNome: string, idBusca = buscaAtual.current) => {
+    async (filtrosBusca: FiltrosHistorico = filtrosIniciais) => {
       if (!token) {
         return;
       }
@@ -66,56 +140,77 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
       setCarregando(true);
 
       try {
-        const dados = await apiListarAvaliacoes(token, filtroNome, {
-          minhas: apenasMinhas,
-        });
+        const { pontuacaoMin, pontuacaoMax } = obterIntervaloPontuacao(
+          filtrosBusca.pontuacao
+        );
+        const { dataInicio, dataFim } = prepararPeriodo(filtrosBusca.periodo);
 
-        if (idBusca !== buscaAtual.current) {
-          return;
-        }
+        const dados = await apiListarAvaliacoes(
+          token,
+          filtrosBusca.nomePaciente,
+          {
+            minhas: apenasMinhas,
+            avaliadorId: filtrosBusca.avaliadorId ?? undefined,
+            pontuacaoMin,
+            pontuacaoMax,
+            dataInicio,
+            dataFim,
+          }
+        );
 
         setAvaliacoes(dados);
       } catch (e) {
-        if (idBusca !== buscaAtual.current) {
-          return;
-        }
-
         message.error(
           e instanceof Error
             ? e.message
             : "Não foi possível listar as avaliações."
         );
       } finally {
-        if (idBusca === buscaAtual.current) {
-          setCarregando(false);
-        }
+        setCarregando(false);
       }
     },
     [apenasMinhas, message, token]
   );
 
   useEffect(() => {
-    buscaAtual.current += 1;
-    void carregarAvaliacoes("", buscaAtual.current);
+    if (!token) {
+      return;
+    }
 
-    return () => window.clearTimeout(temporizadorBusca.current);
-  }, [carregarAvaliacoes]);
+    const temporizadorCarregamento = window.setTimeout(() => {
+      void Promise.all([
+        carregarAvaliacoes(),
+        apiListarUsuarios(token)
+          .then(setUsuarios)
+          .catch((e) => {
+            message.error(
+              e instanceof Error
+                ? e.message
+                : "Não foi possível carregar os avaliadores."
+            );
+          }),
+      ]);
+    }, 0);
 
-  function buscarEnquantoDigita(valor: string) {
-    setNomePaciente(valor);
-    window.clearTimeout(temporizadorBusca.current);
-    buscaAtual.current += 1;
-    const idBusca = buscaAtual.current;
+    return () => window.clearTimeout(temporizadorCarregamento);
+  }, [carregarAvaliacoes, message, token]);
 
-    temporizadorBusca.current = window.setTimeout(() => {
-      void carregarAvaliacoes(valor, idBusca);
-    }, 300);
+  function aplicarFiltros() {
+    void carregarAvaliacoes(filtros);
   }
 
-  function buscarAgora(valor: string) {
-    window.clearTimeout(temporizadorBusca.current);
-    buscaAtual.current += 1;
-    void carregarAvaliacoes(valor, buscaAtual.current);
+  function limparFiltros() {
+    setFiltros(filtrosIniciais);
+    void carregarAvaliacoes(filtrosIniciais);
+  }
+
+  function imprimirRelatorio() {
+    if (avaliacoes.length === 0) {
+      message.warning("Não há avaliações para imprimir.");
+      return;
+    }
+
+    imprimirRelatorioAvaliacoes(avaliacoes);
   }
 
   const colunas: ColumnsType<Avaliacao> = [
@@ -138,7 +233,6 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
       dataIndex: "pontuacaoTotal",
       key: "pontuacaoTotal",
       align: "center",
-      sorter: (a, b) => a.pontuacaoTotal - b.pontuacaoTotal,
     },
     {
       title: "Data",
@@ -242,25 +336,89 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
           padding: 24,
         }}
       >
-        <Space
-          direction="vertical"
-          size="large"
-          style={{ width: "100%" }}
-        >
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Typography.Title level={2} style={{ color: verde, margin: 0 }}>
             {apenasMinhas ? "Minhas Avaliações" : "Histórico Geral"}
           </Typography.Title>
 
-          <Input.Search
-            allowClear
-            size="large"
-            placeholder="Nome do paciente"
-            value={nomePaciente}
-            enterButton={<SearchOutlined />}
-            onChange={(evento) => buscarEnquantoDigita(evento.target.value)}
-            onSearch={buscarAgora}
-            style={{ maxWidth: 570 }}
-          />
+          <Space size="middle" wrap style={{ width: "100%" }}>
+            <Input
+              allowClear
+              size="large"
+              placeholder="Nome do paciente"
+              value={filtros.nomePaciente}
+              onChange={(evento) =>
+                setFiltros((filtrosAtuais) => ({
+                  ...filtrosAtuais,
+                  nomePaciente: evento.target.value,
+                }))
+              }
+              onPressEnter={aplicarFiltros}
+              style={{ width: 300 }}
+            />
+            <Select
+              allowClear
+              showSearch
+              size="large"
+              placeholder="Avaliador"
+              value={filtros.avaliadorId}
+              options={opcoesAvaliador}
+              optionFilterProp="label"
+              onChange={(avaliadorId) =>
+                setFiltros((filtrosAtuais) => ({
+                  ...filtrosAtuais,
+                  avaliadorId: avaliadorId ?? null,
+                }))
+              }
+              style={{ width: 275 }}
+            />
+            <Select
+              allowClear
+              size="large"
+              placeholder="Pontuação"
+              value={filtros.pontuacao}
+              options={opcoesPontuacao}
+              onChange={(pontuacao) =>
+                setFiltros((filtrosAtuais) => ({
+                  ...filtrosAtuais,
+                  pontuacao: pontuacao ?? null,
+                }))
+              }
+              style={{ width: 275 }}
+            />
+            <RangePicker
+              locale={datePickerPtBR}
+              size="large"
+              value={filtros.periodo}
+              placeholder={["Início", "Fim"]}
+              format="DD/MM/YYYY"
+              onChange={(periodo) =>
+                setFiltros((filtrosAtuais) => ({
+                  ...filtrosAtuais,
+                  periodo,
+                }))
+              }
+              style={{ width: 300 }}
+            />
+            <Button
+              type="primary"
+              size="large"
+              onClick={aplicarFiltros}
+              style={{ background: verde }}
+            >
+              Filtrar
+            </Button>
+            <Button size="large" onClick={limparFiltros}>
+              Limpar filtros
+            </Button>
+            <Button
+              size="large"
+              icon={<PrinterOutlined />}
+              onClick={imprimirRelatorio}
+            >
+              Imprimir relatório
+            </Button>
+          </Space>
 
           <Table<Avaliacao>
             rowKey="id"

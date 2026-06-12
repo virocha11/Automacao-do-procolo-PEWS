@@ -72,6 +72,18 @@ export async function buscarAvaliacaoAnexoPorId(
   return repositorioAnexo.findOne({ where: { id } });
 }
 
+export async function buscarAvaliacaoAnexoPorCaminho(
+  caminho: string
+): Promise<AvaliacaoAnexo | null> {
+  return repositorioAnexo.findOne({ where: { caminho } });
+}
+
+export async function buscarAvaliacaoPorCaminho(
+  caminho: string
+): Promise<Avaliacao | null> {
+  return repositorio.findOne({ where: { anexoCaminho: caminho } });
+}
+
 export async function removerAvaliacaoAnexo(id: number): Promise<boolean> {
   const resultado = await repositorioAnexo.delete(id);
   return !!resultado.affected && resultado.affected > 0;
@@ -92,7 +104,13 @@ export async function buscarTodasAvaliacoes(
   nomePaciente?: string,
   buscaExata = false,
   pacienteId?: number,
-  avaliador?: { id: number; nome: string }
+  avaliador?: { id: number; nome: string },
+  avaliadorId?: number,
+  avaliadorNome?: string,
+  pontuacaoMin?: number,
+  pontuacaoMax?: number,
+  dataInicio?: Date,
+  dataFim?: Date
 ): Promise<Avaliacao[]> {
   const consulta = repositorio
     .createQueryBuilder("avaliacao")
@@ -125,6 +143,42 @@ export async function buscarTodasAvaliacoes(
           );
       })
     );
+  }
+
+  if (avaliadorId) {
+    consulta.andWhere("avaliacao.avaliadorId = :avaliadorId", {
+      avaliadorId,
+    });
+  }
+
+  if (avaliadorNome) {
+    consulta.andWhere("avaliacao.avaliadorNome LIKE :avaliadorNome", {
+      avaliadorNome: `${avaliadorNome}%`,
+    });
+  }
+
+  if (pontuacaoMin !== undefined) {
+    consulta.andWhere("avaliacao.pontuacaoTotal >= :pontuacaoMin", {
+      pontuacaoMin,
+    });
+  }
+
+  if (pontuacaoMax !== undefined) {
+    consulta.andWhere("avaliacao.pontuacaoTotal <= :pontuacaoMax", {
+      pontuacaoMax,
+    });
+  }
+
+  if (dataInicio) {
+    consulta.andWhere("avaliacao.criadoEm >= :dataInicio", {
+      dataInicio,
+    });
+  }
+
+  if (dataFim) {
+    consulta.andWhere("avaliacao.criadoEm <= :dataFim", {
+      dataFim,
+    });
   }
 
   return consulta.getMany();

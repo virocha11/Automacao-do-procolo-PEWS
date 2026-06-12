@@ -20,7 +20,8 @@ import {
   FileAddOutlined,
   PrinterOutlined,
 } from "@ant-design/icons";
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -369,8 +370,7 @@ export function PaginaHistoricoPaciente() {
         const dadosPaciente = await apiBuscarPacientePorId(token, idPaciente);
         setPaciente(dadosPaciente);
 
-        const dados = await apiListarAvaliacoes(token, dadosPaciente.nome, {
-          exato: true,
+        const dados = await apiListarAvaliacoes(token, undefined, {
           pacienteId: idPaciente,
         });
         setAvaliacoes(ordenarPorMaisRecente(dados));
@@ -478,6 +478,24 @@ export function PaginaHistoricoPaciente() {
       if (arquivoInputRef.current) {
         arquivoInputRef.current.value = "";
       }
+    }
+  }
+
+  async function abrirAnexo(caminho: string) {
+    const url = `${urlBaseApi()}/anexos/${encodeURIComponent(caminho)}`;
+
+    try {
+      const resposta = await fetch(url, { method: "HEAD" });
+      if (!resposta.ok) {
+        throw new Error("Arquivo não encontrado ou foi removido.");
+      }
+      window.open(url, "_blank");
+    } catch (erro) {
+      message.error(
+        erro instanceof Error
+          ? erro.message
+          : "Não foi possível abrir o arquivo."
+      );
     }
   }
 
@@ -598,17 +616,23 @@ export function PaginaHistoricoPaciente() {
               Anexar
             </Button>
             {(avaliacao.anexos?.length ?? 0) > 0 || avaliacao.anexoCaminho ? (
-              <Space wrap>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {avaliacao.anexos?.map((anexo) => (
-                  <Space key={anexo.id} size="small" wrap>
+                  <Space key={anexo.id} size="small">
                     <Typography.Link
                       href={`${urlBaseApi()}/anexos/${encodeURIComponent(
                         anexo.caminho
                       )}`}
+                      onClick={(evento) => {
+                        evento.preventDefault();
+                        evento.stopPropagation();
+                        void abrirAnexo(anexo.caminho);
+                      }}
                       target="_blank"
                       rel="noreferrer"
                     >
                       {anexo.nomeOriginal}
+                      <DownloadOutlined style={{ marginLeft: 6 }} />
                     </Typography.Link>
                     <Popconfirm
                       title="Tem certeza que deseja excluir este anexo?"
@@ -630,15 +654,21 @@ export function PaginaHistoricoPaciente() {
                   </Space>
                 ))}
                 {avaliacao.anexoCaminho ? (
-                  <Space size="small" wrap>
+                  <Space size="small">
                     <Typography.Link
                       href={`${urlBaseApi()}/anexos/${encodeURIComponent(
                         avaliacao.anexoCaminho
                       )}`}
+                      onClick={(evento) => {
+                        evento.preventDefault();
+                        evento.stopPropagation();
+                        void abrirAnexo(avaliacao.anexoCaminho ?? "");
+                      }}
                       target="_blank"
                       rel="noreferrer"
                     >
                       {avaliacao.anexoNomeOriginal ?? "Anexo"}
+                      <DownloadOutlined style={{ marginLeft: 6 }} />
                     </Typography.Link>
                     <Popconfirm
                       title="Tem certeza que deseja excluir este anexo?"
@@ -659,7 +689,7 @@ export function PaginaHistoricoPaciente() {
                     </Popconfirm>
                   </Space>
                 ) : null}
-              </Space>
+              </div>
             ) : null}
             {usuarioAdministrador ? (
               <span onClick={(evento) => evento.stopPropagation()}>
