@@ -55,7 +55,7 @@ export async function buscarAvaliacaoPorId(
 ): Promise<Avaliacao | null> {
   return repositorio.findOne({
     where: { id },
-    relations: ["anexos"],
+    relations: ["anexos", "sinaisVitais"],
   });
 }
 
@@ -96,7 +96,7 @@ export async function atualizarAvaliacao(
   await repositorio.update(id, dados);
   return repositorio.findOne({
     where: { id },
-    relations: ["anexos"],
+    relations: ["anexos", "sinaisVitais"],
   });
 }
 
@@ -115,6 +115,7 @@ export async function buscarTodasAvaliacoes(
   const consulta = repositorio
     .createQueryBuilder("avaliacao")
     .leftJoinAndSelect("avaliacao.anexos", "anexo")
+    .leftJoinAndSelect("avaliacao.sinaisVitais", "sinalVital")
     .orderBy("avaliacao.criadoEm", "DESC");
 
   if (pacienteId) {

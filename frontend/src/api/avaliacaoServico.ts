@@ -63,6 +63,29 @@ export async function apiAnexarArquivoAvaliacao(
   return tratarResposta(resposta) as Promise<Avaliacao>;
 }
 
+export async function apiRegistrarSinaisVitaisAvaliacao(
+  token: string,
+  avaliacaoId: number,
+  corpo: {
+    condicaoGeral: "SEM_ALTERACOES" | "ALTERACOES_OBSERVADAS";
+    observacao?: string | null;
+  }
+) {
+  const resposta = await fetch(
+    `${urlBaseApi()}/avaliacoes/${avaliacaoId}/sinais-vitais`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(corpo),
+    }
+  );
+
+  return tratarResposta(resposta) as Promise<Avaliacao>;
+}
+
 export async function apiListarAvaliacoes(
   token: string,
   nomePaciente?: string,

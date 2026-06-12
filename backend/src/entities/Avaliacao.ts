@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { AvaliacaoAnexo } from "./AvaliacaoAnexo";
+import { ControleSinaisVitais } from "./ControleSinaisVitais";
 
 @Entity("avaliacoes")
 export class Avaliacao {
@@ -91,6 +92,11 @@ export class Avaliacao {
     cascade: true,
   })
   anexos!: AvaliacaoAnexo[];
+
+  @OneToMany(() => ControleSinaisVitais, (sinalVital) => sinalVital.avaliacao, {
+    cascade: true,
+  })
+  sinaisVitais!: ControleSinaisVitais[];
 
   @CreateDateColumn()
   criadoEm!: Date;

@@ -35,4 +35,14 @@ export type Avaliacao = CorpoCriarAvaliacao & {
     nomeOriginal: string;
     criadoEm: string;
   }[];
+  sinaisVitais?: {
+    id: number;
+    avaliacaoId: number;
+    pacienteId?: number | null;
+    usuarioId?: number | null;
+    usuarioNome?: string | null;
+    condicaoGeral: "SEM_ALTERACOES" | "ALTERACOES_OBSERVADAS";
+    observacao?: string | null;
+    registradoEm: string;
+  }[];
 };
