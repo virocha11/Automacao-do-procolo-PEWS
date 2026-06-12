@@ -35,6 +35,7 @@ function rotuloAcao(acao: string) {
     AVALIACAO_EXCLUIDA: "Avaliação excluída",
     ANEXO_ADICIONADO: "Anexo adicionado",
     ANEXO_EXCLUIDO: "Anexo excluído",
+    SINAIS_VITAIS_REGISTRADOS: "Sinais vitais registrados",
   };
 
   return rotulos[acao] ?? acao;
@@ -56,6 +57,7 @@ function rotuloEntidade(entidade: string) {
   const rotulos: Record<string, string> = {
     AVALIACAO: "Avaliação",
     ANEXO: "Anexo",
+    SINAIS_VITAIS: "Sinais vitais",
   };
 
   return rotulos[entidade] ?? entidade;

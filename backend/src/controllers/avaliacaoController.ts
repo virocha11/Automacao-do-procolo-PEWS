@@ -20,6 +20,8 @@ import {
   DadosCriarLogSistema,
   registrarLogSistema,
 } from "../repositories/logSistemaRepository";
+import { criarControleSinaisVitais } from "../repositories/controleSinaisVitaisRepository";
+import { CondicaoGeralSinaisVitais } from "../entities/ControleSinaisVitais";
 
 const uploadsDir = path.join(__dirname, "..", "uploads", "avaliacoes");
 const legacyUploadsDir = path.join(
@@ -89,6 +91,19 @@ function pontuacao(valor: unknown): number {
 
 function booleano(valor: unknown): boolean {
   return valor === true;
+}
+
+function condicaoGeralSsvvOuNula(
+  valor: unknown
+): CondicaoGeralSinaisVitais | null {
+  if (
+    valor === CondicaoGeralSinaisVitais.SEM_ALTERACOES ||
+    valor === CondicaoGeralSinaisVitais.ALTERACOES_OBSERVADAS
+  ) {
+    return valor;
+  }
+
+  return null;
 }
 
 async function registrarAuditoria(dados: DadosCriarLogSistema) {
@@ -410,6 +425,62 @@ export async function excluirAnexoAvaliacao(req: Request, res: Response) {
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ erro: "Não foi possível excluir o anexo." });
+  }
+}
+
+export async function registrarSinaisVitaisAvaliacao(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ erro: "ID inválido." });
+    }
+
+    const avaliacao = await buscarAvaliacaoPorId(id);
+
+    if (!avaliacao) {
+      return res.status(404).json({ erro: "Avaliação não encontrada." });
+    }
+
+    const condicaoGeral = condicaoGeralSsvvOuNula(req.body?.condicaoGeral);
+
+    if (!condicaoGeral) {
+      return res.status(400).json({ erro: "Condição geral inválida." });
+    }
+
+    const controle = await criarControleSinaisVitais({
+      avaliacaoId: id,
+      pacienteId: avaliacao.pacienteId,
+      usuarioId: req.usuarioAutenticado?.id,
+      usuarioNome: req.usuarioAutenticado?.nome,
+      condicaoGeral,
+      observacao: textoOuNulo(req.body?.observacao),
+    });
+
+    await registrarAuditoria({
+      usuarioId: req.usuarioAutenticado?.id,
+      usuarioNome: req.usuarioAutenticado?.nome,
+      acao: AcaoLogSistema.SINAIS_VITAIS_REGISTRADOS,
+      entidade: EntidadeLogSistema.SINAIS_VITAIS,
+      entidadeId: controle.id,
+      descricao: `Sinais vitais registrados para a avaliação #${id}.`,
+      dadosDepois: controle,
+    });
+
+    const avaliacaoAtualizada = await buscarAvaliacaoPorId(id);
+
+    if (!avaliacaoAtualizada) {
+      return res.status(500).json({
+        erro: "Não foi possível registrar os sinais vitais.",
+      });
+    }
+
+    res.json(avaliacaoAtualizada);
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({
+      erro: "Não foi possível registrar os sinais vitais.",
+    });
   }
 }
 

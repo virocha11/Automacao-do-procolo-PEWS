@@ -10,6 +10,7 @@ import {
   excluirAvaliacao,
   excluirAnexoAvaliacao,
   listarAvaliacoes,
+  registrarSinaisVitaisAvaliacao,
 } from "../controllers/avaliacaoController";
 import { exigirAdministrador } from "../middleware/exigirAdministrador";
 import { exigirAutenticacao } from "../middleware/exigirAutenticacao";
@@ -33,6 +34,11 @@ rotas.get("/avaliacoes", exigirAutenticacao, listarAvaliacoes);
 
 rotas.post("/avaliacoes", exigirAutenticacao, cadastrarAvaliacao);
 rotas.patch("/avaliacoes/:id", exigirAutenticacao, atualizarAvaliacao);
+rotas.post(
+  "/avaliacoes/:id/sinais-vitais",
+  exigirAutenticacao,
+  registrarSinaisVitaisAvaliacao
+);
 rotas.post(
   "/avaliacoes/:id/anexo",
   exigirAutenticacao,

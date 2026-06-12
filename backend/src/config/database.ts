@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { Usuario } from "../entities/Usuario";
 import { Avaliacao } from "../entities/Avaliacao";
 import { AvaliacaoAnexo } from "../entities/AvaliacaoAnexo";
+import { ControleSinaisVitais } from "../entities/ControleSinaisVitais";
 import { LogSistema } from "../entities/LogSistema";
 import { Paciente } from "../entities/Paciente";
 
@@ -16,7 +17,14 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
-  entities: [Usuario, Avaliacao, AvaliacaoAnexo, Paciente, LogSistema],
+  entities: [
+    Usuario,
+    Avaliacao,
+    AvaliacaoAnexo,
+    Paciente,
+    LogSistema,
+    ControleSinaisVitais,
+  ],
   synchronize: true,
   logging: false
 });

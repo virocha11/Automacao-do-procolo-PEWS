@@ -3,20 +3,32 @@ import {
   Button,
   DatePicker,
   Input,
+  Modal,
+  Popover,
+  Radio,
   Select,
   Space,
   Table,
+  Tag,
   Typography,
 } from "antd";
 import datePickerPtBR from "antd/es/date-picker/locale/pt_BR";
 import type { ColumnsType } from "antd/es/table";
 import type { Dayjs } from "dayjs";
 import "dayjs/locale/pt-br";
-import { PrinterOutlined } from "@ant-design/icons";
+import {
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
+  PrinterOutlined,
+} from "@ant-design/icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { apiListarAvaliacoes } from "../api/avaliacaoServico";
+import {
+  apiListarAvaliacoes,
+  apiRegistrarSinaisVitaisAvaliacao,
+} from "../api/avaliacaoServico";
 import { apiListarUsuarios } from "../api/usuariosServico";
 import { useSessao } from "../contexts/SessaoContext";
 import {
@@ -32,6 +44,7 @@ const { RangePicker } = DatePicker;
 
 type PeriodoFiltro = [Dayjs | null, Dayjs | null] | null;
 type CategoriaPontuacao = "baixo" | "atencao" | "alto";
+type CondicaoGeralSsvv = "SEM_ALTERACOES" | "ALTERACOES_OBSERVADAS";
 
 type FiltrosHistorico = {
   nomePaciente: string;
@@ -91,6 +104,233 @@ function prepararPeriodo(periodo: PeriodoFiltro) {
   };
 }
 
+function intervaloReavaliacaoMinutos(pontuacao: number) {
+  if (pontuacao >= 7) {
+    return 0;
+  }
+
+  if (pontuacao >= 5) {
+    return 20;
+  }
+
+  if (pontuacao === 4) {
+    return 30;
+  }
+
+  if (pontuacao === 3) {
+    return 60;
+  }
+
+  return null;
+}
+
+function intervaloSinaisVitaisMinutos(pontuacao: number) {
+  if (pontuacao >= 7) {
+    return 0;
+  }
+
+  if (pontuacao >= 5) {
+    return 20;
+  }
+
+  if (pontuacao === 4) {
+    return 30;
+  }
+
+  if (pontuacao === 3) {
+    return 60;
+  }
+
+  return 360;
+}
+
+function formatarDuracaoMinutos(minutos: number) {
+  const total = Math.max(0, Math.ceil(minutos));
+  const horas = Math.floor(total / 60);
+  const restoMinutos = total % 60;
+
+  if (horas > 0 && restoMinutos > 0) {
+    return `${horas}h ${restoMinutos}min`;
+  }
+
+  if (horas > 0) {
+    return `${horas}h`;
+  }
+
+  return `${total}min`;
+}
+
+function obterStatusReavaliacao(avaliacao: Avaliacao, agora: Date) {
+  const intervalo = intervaloReavaliacaoMinutos(avaliacao.pontuacaoTotal);
+  const dataAvaliacao = new Date(avaliacao.criadoEm);
+
+  if (!intervalo && intervalo !== 0) {
+    return {
+      cor: "success" as const,
+      icone: <CheckCircleOutlined />,
+      texto: "Em dia",
+      tagTexto: "PEWS em dia",
+      nivel: "ok" as const,
+      titulo: "Reavaliação PEWS",
+      detalhe: "Sem lembrete automático para a pontuação atual.",
+      prazo: "-",
+    };
+  }
+
+  if (Number.isNaN(dataAvaliacao.getTime())) {
+    return {
+      cor: "default" as const,
+      icone: <ClockCircleOutlined />,
+      texto: "Sem data",
+      tagTexto: "PEWS sem data",
+      nivel: "ok" as const,
+      titulo: "Reavaliação PEWS",
+      detalhe: "Não foi possível calcular o prazo desta avaliação.",
+      prazo: "-",
+    };
+  }
+
+  const prazo = new Date(dataAvaliacao.getTime() + intervalo * 60_000);
+  const minutosRestantes = (prazo.getTime() - agora.getTime()) / 60_000;
+
+  if (intervalo === 0 && minutosRestantes >= -1) {
+    return {
+      cor: "error" as const,
+      icone: <ExclamationCircleOutlined />,
+      texto: "Imediata",
+      tagTexto: "PEWS imediato",
+      nivel: "error" as const,
+      titulo: "Reavaliação PEWS",
+      detalhe: "A pontuação indica reavaliação imediata.",
+      prazo: formatarDataHora(prazo.toISOString()),
+    };
+  }
+
+  if (minutosRestantes <= 0) {
+    return {
+      cor: "error" as const,
+      icone: <ExclamationCircleOutlined />,
+      texto: "Atrasado",
+      tagTexto: `PEWS atrasado ${formatarDuracaoMinutos(
+        Math.abs(minutosRestantes)
+      )}`,
+      nivel: "error" as const,
+      titulo: "Reavaliação PEWS",
+      detalhe: `Reavaliação atrasada há ${formatarDuracaoMinutos(
+        Math.abs(minutosRestantes)
+      )}.`,
+      prazo: formatarDataHora(prazo.toISOString()),
+    };
+  }
+
+  return {
+    cor: "warning" as const,
+    icone: <ClockCircleOutlined />,
+    texto: "Atenção",
+    tagTexto: `PEWS em ${formatarDuracaoMinutos(minutosRestantes)}`,
+    nivel: "warning" as const,
+    titulo: "Reavaliação PEWS",
+    detalhe: `Reavaliar em ${formatarDuracaoMinutos(minutosRestantes)}.`,
+    prazo: formatarDataHora(prazo.toISOString()),
+  };
+}
+
+function obterUltimoSinalVital(avaliacao: Avaliacao) {
+  return [...(avaliacao.sinaisVitais ?? [])].sort((a, b) => {
+    return (
+      new Date(b.registradoEm).getTime() -
+      new Date(a.registradoEm).getTime()
+    );
+  })[0];
+}
+
+function obterStatusSinaisVitais(avaliacao: Avaliacao, agora: Date) {
+  const intervalo = intervaloSinaisVitaisMinutos(avaliacao.pontuacaoTotal);
+  const ultimoSinalVital = obterUltimoSinalVital(avaliacao);
+  const dataBase = ultimoSinalVital?.registradoEm ?? avaliacao.criadoEm;
+  const dataReferencia = new Date(dataBase);
+
+  if (Number.isNaN(dataReferencia.getTime())) {
+    return {
+      cor: "default" as const,
+      icone: <ClockCircleOutlined />,
+      tagTexto: "SSVV sem data",
+      nivel: "ok" as const,
+      detalhe: "Não foi possível calcular o prazo dos sinais vitais.",
+      prazo: "-",
+      ultimoRegistro: "Nenhuma aferição registrada.",
+      condicaoGeral: "-",
+      observacao: null,
+    };
+  }
+
+  const prazo = new Date(dataReferencia.getTime() + intervalo * 60_000);
+  const minutosRestantes = (prazo.getTime() - agora.getTime()) / 60_000;
+  const ultimoRegistro = ultimoSinalVital
+    ? `Último SSVV: ${formatarDataHora(ultimoSinalVital.registradoEm)} por ${
+        ultimoSinalVital.usuarioNome ?? "usuário não identificado"
+      }.`
+    : "Nenhuma aferição registrada.";
+
+  if (intervalo === 0 && minutosRestantes >= -1) {
+    return {
+      cor: "error" as const,
+      icone: <ExclamationCircleOutlined />,
+      tagTexto: "SSVV imediato",
+      nivel: "error" as const,
+      detalhe: "Sinais vitais devem ser aferidos imediatamente.",
+      prazo: formatarDataHora(prazo.toISOString()),
+      ultimoRegistro,
+      condicaoGeral: formatarCondicaoGeralSsvv(ultimoSinalVital?.condicaoGeral),
+      observacao: ultimoSinalVital?.observacao ?? null,
+    };
+  }
+
+  if (minutosRestantes <= 0) {
+    return {
+      cor: "error" as const,
+      icone: <ExclamationCircleOutlined />,
+      tagTexto: `SSVV atrasado ${formatarDuracaoMinutos(
+        Math.abs(minutosRestantes)
+      )}`,
+      nivel: "error" as const,
+      detalhe: `Sinais vitais atrasados ${formatarDuracaoMinutos(
+        Math.abs(minutosRestantes)
+      )}.`,
+      prazo: formatarDataHora(prazo.toISOString()),
+      ultimoRegistro,
+      condicaoGeral: formatarCondicaoGeralSsvv(ultimoSinalVital?.condicaoGeral),
+      observacao: ultimoSinalVital?.observacao ?? null,
+    };
+  }
+
+  return {
+    cor: "warning" as const,
+    icone: <ClockCircleOutlined />,
+    tagTexto: `SSVV em ${formatarDuracaoMinutos(minutosRestantes)}`,
+    nivel: "warning" as const,
+    detalhe: `Sinais vitais em ${formatarDuracaoMinutos(minutosRestantes)}.`,
+    prazo: formatarDataHora(prazo.toISOString()),
+    ultimoRegistro,
+    condicaoGeral: formatarCondicaoGeralSsvv(ultimoSinalVital?.condicaoGeral),
+    observacao: ultimoSinalVital?.observacao ?? null,
+  };
+}
+
+function formatarCondicaoGeralSsvv(
+  condicao?: "SEM_ALTERACOES" | "ALTERACOES_OBSERVADAS" | null
+) {
+  if (condicao === "SEM_ALTERACOES") {
+    return "Sem alterações";
+  }
+
+  if (condicao === "ALTERACOES_OBSERVADAS") {
+    return "Alterações observadas";
+  }
+
+  return "-";
+}
+
 type PropsPaginaInicio = {
   apenasMinhas?: boolean;
 };
@@ -103,6 +343,16 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [filtros, setFiltros] = useState<FiltrosHistorico>(filtrosIniciais);
+  const [agora, setAgora] = useState(() => new Date());
+  const [registrandoSsvvId, setRegistrandoSsvvId] = useState<number | null>(
+    null
+  );
+  const [modalSsvvAvaliacaoId, setModalSsvvAvaliacaoId] = useState<
+    number | null
+  >(null);
+  const [condicaoGeralSsvv, setCondicaoGeralSsvv] =
+    useState<CondicaoGeralSsvv>("SEM_ALTERACOES");
+  const [observacaoSsvv, setObservacaoSsvv] = useState("");
 
   const opcoesAvaliador = useMemo(() => {
     return [...usuarios]
@@ -180,6 +430,14 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
     return () => window.clearTimeout(temporizadorCarregamento);
   }, [carregarAvaliacoes, message, token]);
 
+  useEffect(() => {
+    const temporizador = window.setInterval(() => {
+      setAgora(new Date());
+    }, 60_000);
+
+    return () => window.clearInterval(temporizador);
+  }, []);
+
   function aplicarFiltros() {
     void carregarAvaliacoes(filtros);
   }
@@ -196,6 +454,52 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
     }
 
     imprimirRelatorioAvaliacoes(avaliacoes);
+  }
+
+  function abrirModalSsvv(avaliacaoId: number) {
+    setModalSsvvAvaliacaoId(avaliacaoId);
+    setCondicaoGeralSsvv("SEM_ALTERACOES");
+    setObservacaoSsvv("");
+  }
+
+  async function registrarSinaisVitais() {
+    if (!token) {
+      return;
+    }
+
+    if (!modalSsvvAvaliacaoId) {
+      return;
+    }
+
+    try {
+      setRegistrandoSsvvId(modalSsvvAvaliacaoId);
+      const avaliacaoAtualizada = await apiRegistrarSinaisVitaisAvaliacao(
+        token,
+        modalSsvvAvaliacaoId,
+        {
+          condicaoGeral: condicaoGeralSsvv,
+          observacao: observacaoSsvv.trim() || null,
+        }
+      );
+      setAvaliacoes((avaliacoesAtuais) =>
+        avaliacoesAtuais.map((avaliacao) =>
+          avaliacao.id === avaliacaoAtualizada.id
+            ? avaliacaoAtualizada
+            : avaliacao
+        )
+      );
+      setAgora(new Date());
+      setModalSsvvAvaliacaoId(null);
+      message.success("Sinais vitais registrados.");
+    } catch (e) {
+      message.error(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível registrar os sinais vitais."
+      );
+    } finally {
+      setRegistrandoSsvvId(null);
+    }
   }
 
   const colunas: ColumnsType<Avaliacao> = [
@@ -225,6 +529,88 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
       key: "criadoEm",
       align: "center",
       render: (valor: string | null | undefined) => formatarDataHora(valor),
+    },
+    {
+      title: "Status",
+      key: "status",
+      align: "center",
+      width: 140,
+      render: (_, registro) => {
+        const statusPews = obterStatusReavaliacao(registro, agora);
+        const statusSsvv = obterStatusSinaisVitais(registro, agora);
+
+        return (
+          <Space
+            direction="vertical"
+            size={4}
+            onClick={(evento) => evento.stopPropagation()}
+          >
+            <Popover
+              title="Reavaliação PEWS"
+              content={
+                <Space direction="vertical" size={4}>
+                  <Typography.Text>{statusPews.detalhe}</Typography.Text>
+                  <Typography.Text type="secondary">
+                    Prazo: {statusPews.prazo}
+                  </Typography.Text>
+                  <Typography.Text type="secondary">
+                    Pontuação PEWS: {registro.pontuacaoTotal}
+                  </Typography.Text>
+                </Space>
+              }
+              trigger={["hover", "click"]}
+            >
+              <Tag
+                color={statusPews.cor}
+                icon={statusPews.icone}
+                style={{ cursor: "pointer", marginInlineEnd: 0 }}
+              >
+                {statusPews.tagTexto}
+              </Tag>
+            </Popover>
+            <Popover
+              title="Sinais vitais"
+              content={
+                <Space direction="vertical" size={6}>
+                  <Typography.Text>{statusSsvv.detalhe}</Typography.Text>
+                  <Typography.Text type="secondary">
+                    Prazo: {statusSsvv.prazo}
+                  </Typography.Text>
+                  <Typography.Text type="secondary">
+                    {statusSsvv.ultimoRegistro}
+                  </Typography.Text>
+                  <Typography.Text type="secondary">
+                    Condição geral: {statusSsvv.condicaoGeral}
+                  </Typography.Text>
+                  {statusSsvv.observacao ? (
+                    <Typography.Text type="secondary">
+                      Obs.: {statusSsvv.observacao}
+                    </Typography.Text>
+                  ) : null}
+                  <Button
+                    type="primary"
+                    size="small"
+                    loading={registrandoSsvvId === registro.id}
+                    onClick={() => abrirModalSsvv(registro.id)}
+                    style={{ background: verde, alignSelf: "flex-start" }}
+                  >
+                    Registrar SSVV
+                  </Button>
+                </Space>
+              }
+              trigger={["hover", "click"]}
+            >
+              <Tag
+                color={statusSsvv.cor}
+                icon={statusSsvv.icone}
+                style={{ cursor: "pointer", marginInlineEnd: 0 }}
+              >
+                {statusSsvv.tagTexto}
+              </Tag>
+            </Popover>
+          </Space>
+        );
+      },
     },
     {
       title: "",
@@ -275,6 +661,7 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
   ];
 
   return (
+    <>
     <div style={{ margin: "-24px" }}>
       <nav
         style={{
@@ -423,5 +810,43 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
         </Space>
       </main>
     </div>
+    <Modal
+      title="Registrar sinais vitais"
+      open={modalSsvvAvaliacaoId !== null}
+      okText="Registrar"
+      cancelText="Cancelar"
+      confirmLoading={
+        modalSsvvAvaliacaoId !== null &&
+        registrandoSsvvId === modalSsvvAvaliacaoId
+      }
+      onCancel={() => setModalSsvvAvaliacaoId(null)}
+      onOk={() => void registrarSinaisVitais()}
+    >
+      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Typography.Text>
+          Informe a condição geral observada na aferição dos sinais vitais.
+        </Typography.Text>
+        <Radio.Group
+          value={condicaoGeralSsvv}
+          onChange={(evento) => setCondicaoGeralSsvv(evento.target.value)}
+        >
+          <Space direction="vertical">
+            <Radio value="SEM_ALTERACOES">Sem alterações</Radio>
+            <Radio value="ALTERACOES_OBSERVADAS">
+              Alterações observadas
+            </Radio>
+          </Space>
+        </Radio.Group>
+        <Input.TextArea
+          value={observacaoSsvv}
+          onChange={(evento) => setObservacaoSsvv(evento.target.value)}
+          placeholder="Observação opcional"
+          maxLength={500}
+          rows={3}
+          showCount
+        />
+      </Space>
+    </Modal>
+    </>
   );
 }
