@@ -22,6 +22,14 @@ export type ImpressaoAvaliacaoDados = {
   tempoControleSsvv?: string;
 };
 
+export type ImpressaoRelatorioAvaliacaoItem = {
+  id: number;
+  nomePaciente?: string | null;
+  avaliadorNome?: string | null;
+  pontuacaoTotal: number;
+  criadoEm?: string | null;
+};
+
 type Classificacao = {
   texto: string;
   cor: string;
@@ -141,6 +149,85 @@ export function imprimirAvaliacao(
 </html>`;
 
   const janela = window.open("", "_blank", "width=900,height=700");
+  if (!janela) {
+    window.alert("Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups.");
+    return;
+  }
+
+  janela.document.write(html);
+  janela.document.close();
+  janela.focus();
+  janela.print();
+}
+
+export function imprimirRelatorioAvaliacoes(
+  avaliacoes: ImpressaoRelatorioAvaliacaoItem[],
+  titulo = "Relatório de avaliações PEWS"
+) {
+  const geradoEm = formatarDataHora(new Date());
+  const linhas = avaliacoes
+    .map((avaliacao) => {
+      const classificacao = classificarPontuacao(avaliacao.pontuacaoTotal);
+
+      return `
+        <tr>
+          <td>${escapeHtml(avaliacao.nomePaciente ?? "-")}</td>
+          <td>${escapeHtml(avaliacao.avaliadorNome ?? "-")}</td>
+          <td class="score">
+            <span class="badge" style="background: ${classificacao.cor};">
+              PEWS ${escapeHtml(avaliacao.pontuacaoTotal)} • ${escapeHtml(classificacao.texto)}
+            </span>
+          </td>
+          <td>${escapeHtml(formatarDataHora(avaliacao.criadoEm ?? ""))}</td>
+        </tr>`;
+    })
+    .join("");
+
+  const html = `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(titulo)}</title>
+    <style>
+      body { font-family: Arial, sans-serif; color: #111; margin: 24px; }
+      h1 { font-size: 24px; margin: 0 0 8px; }
+      .header { border-bottom: 1px solid #ccc; padding-bottom: 12px; margin-bottom: 20px; }
+      .meta { color: #555; font-size: 14px; margin: 4px 0; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border-bottom: 1px solid #ddd; padding: 10px 8px; text-align: left; vertical-align: top; }
+      th { background: #f5f5f5; font-size: 13px; text-transform: uppercase; }
+      .score { white-space: nowrap; }
+      .badge { display: inline-block; border-radius: 999px; color: #fff; font-weight: 700; padding: 4px 10px; }
+      .footer { margin-top: 24px; font-size: 14px; color: #555; }
+      @media print { body { margin: 0; } }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>${escapeHtml(titulo)}</h1>
+      <p class="meta">Gerado em ${escapeHtml(geradoEm)}</p>
+      <p class="meta">Total de avaliações: ${escapeHtml(avaliacoes.length)}</p>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Paciente</th>
+          <th>Avaliador</th>
+          <th>Pontuação</th>
+          <th>Data</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${linhas}
+      </tbody>
+    </table>
+
+    <div class="footer">Documento gerado pelo sistema PEWS.</div>
+  </body>
+</html>`;
+
+  const janela = window.open("", "_blank", "width=1000,height=700");
   if (!janela) {
     window.alert("Não foi possível abrir a janela de impressão. Verifique o bloqueador de pop-ups.");
     return;

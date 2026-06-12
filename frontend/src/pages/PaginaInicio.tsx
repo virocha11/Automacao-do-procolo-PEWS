@@ -19,7 +19,10 @@ import { useNavigate } from "react-router-dom";
 import { apiListarAvaliacoes } from "../api/avaliacaoServico";
 import { apiListarUsuarios } from "../api/usuariosServico";
 import { useSessao } from "../contexts/SessaoContext";
-import { imprimirAvaliacao } from "../lib/impressaoAvaliacao";
+import {
+  imprimirAvaliacao,
+  imprimirRelatorioAvaliacoes,
+} from "../lib/impressaoAvaliacao";
 import type { Avaliacao } from "../types/avaliacao";
 import type { Usuario } from "../types/usuario";
 
@@ -184,6 +187,15 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
   function limparFiltros() {
     setFiltros(filtrosIniciais);
     void carregarAvaliacoes(filtrosIniciais);
+  }
+
+  function imprimirRelatorio() {
+    if (avaliacoes.length === 0) {
+      message.warning("Não há avaliações para imprimir.");
+      return;
+    }
+
+    imprimirRelatorioAvaliacoes(avaliacoes);
   }
 
   const colunas: ColumnsType<Avaliacao> = [
@@ -374,6 +386,13 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
             </Button>
             <Button size="large" onClick={limparFiltros}>
               Limpar filtros
+            </Button>
+            <Button
+              size="large"
+              icon={<PrinterOutlined />}
+              onClick={imprimirRelatorio}
+            >
+              Imprimir relatório
             </Button>
           </Space>
 
