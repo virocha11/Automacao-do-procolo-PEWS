@@ -252,6 +252,14 @@ function obterPontuacao(opcoes: OpcaoPontuada[], valor?: string) {
 }
 
 function obterIntervencaoSugerida(pontuacao: number) {
+  if (pontuacao === 0) {
+    return {
+      intervencao:
+        "Manter rotina de avaliação. PEWS a cada 24 horas. Registrar orientações médicas em evolução de enfermagem e relatório técnico.",
+      tempoControleSsvv: "Sinais Vitais de 6/6 horas.",
+    };
+  }
+
   if (pontuacao <= 2) {
     return {
       intervencao:
