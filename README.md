@@ -37,6 +37,28 @@ Antes de iniciar, você precisa ter instalado:
 - Docker Compose e executar o comando: "docker-compose up --build" para ativar os containers.
 - Executar o comando: "npm run dev" na pasta do frontend
 
+## Popular o banco de dados (Seed)
+Após subir os containers, execute o comando abaixo para criar os usuários iniciais no banco de dados:
+```bash
+docker-compose exec backend npm run seed
+```
+Ou, se estiver rodando o backend localmente (sem Docker):
+```bash
+cd backend
+npm run seed
+```
+O seed cria os seguintes usuários:
+| Nome              | Email                     | Função        |
+| ----------------- | ------------------------- | ------------- |
+| Vivian            | vivian@pews.com           | Administrador |
+| Leticia           | leticia@pews.com          | Administrador |
+| João Tester       | joao.tester@pews.com      | Médico        |
+| Maria Chiquinha   | maria.chiquinha@pews.com  | Enfermeiro    |
+
+> **Observação:** As senhas definidas para os usuários em ambiente de desenvolvimento podem ser verificadas no arquivo [seed.ts](file:///d:/tecva/Disciplinas%20BCC/Projeto%20Integrador/PEWS/Automacao-do-procolo-PEWS/backend/src/seed.ts).
+> 
+> **Observação:** O seed é idempotente — pode ser executado várias vezes sem duplicar usuários. Caso o e-mail já exista no banco, o usuário será ignorado.
+
 ## Abaixo encontra-se a imagens do protótipo desse projeto elaborado no Figma. 
 
 ![Tela de Login](./images/prototipo%201.jpeg "FIGURA 1: Tela de Login]")
