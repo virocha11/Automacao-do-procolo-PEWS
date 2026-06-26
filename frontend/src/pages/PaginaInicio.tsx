@@ -3,6 +3,7 @@ import {
   Button,
   DatePicker,
   Input,
+  InputNumber,
   Modal,
   Popover,
   Radio,
@@ -244,11 +245,25 @@ function obterUltimoSinalVital(avaliacao: Avaliacao) {
   })[0];
 }
 
+function formatarFrequenciaSsvv(minutos: number) {
+  if (minutos === 0) {
+    return "Imediato/Contínuo";
+  }
+  if (minutos < 60) {
+    return `A cada ${minutos} minutos`;
+  }
+  const horas = minutos / 60;
+  return `A cada ${horas} ${horas === 1 ? "hora" : "horas"}`;
+}
+
 function obterStatusSinaisVitais(avaliacao: Avaliacao, agora: Date) {
   const intervalo = intervaloSinaisVitaisMinutos(avaliacao.pontuacaoTotal);
+  const frequencia = formatarFrequenciaSsvv(intervalo);
   const ultimoSinalVital = obterUltimoSinalVital(avaliacao);
   const dataBase = ultimoSinalVital?.registradoEm ?? avaliacao.criadoEm;
   const dataReferencia = new Date(dataBase);
+
+  const realizado = !!ultimoSinalVital;
 
   if (Number.isNaN(dataReferencia.getTime())) {
     return {
@@ -261,6 +276,9 @@ function obterStatusSinaisVitais(avaliacao: Avaliacao, agora: Date) {
       ultimoRegistro: "Nenhuma aferição registrada.",
       condicaoGeral: "-",
       observacao: null,
+      frequencia: "Não disponível",
+      procedimentoStatus: "Desconhecido",
+      realizado: false,
     };
   }
 
@@ -283,6 +301,9 @@ function obterStatusSinaisVitais(avaliacao: Avaliacao, agora: Date) {
       ultimoRegistro,
       condicaoGeral: formatarCondicaoGeralSsvv(ultimoSinalVital?.condicaoGeral),
       observacao: ultimoSinalVital?.observacao ?? null,
+      frequencia,
+      procedimentoStatus: realizado ? "Realizado (Pendente imediato)" : "Não realizado (Pendente imediato)",
+      realizado,
     };
   }
 
@@ -301,6 +322,9 @@ function obterStatusSinaisVitais(avaliacao: Avaliacao, agora: Date) {
       ultimoRegistro,
       condicaoGeral: formatarCondicaoGeralSsvv(ultimoSinalVital?.condicaoGeral),
       observacao: ultimoSinalVital?.observacao ?? null,
+      frequencia,
+      procedimentoStatus: realizado ? "Realizado (Atrasado)" : "Não realizado (Atrasado)",
+      realizado,
     };
   }
 
@@ -314,6 +338,9 @@ function obterStatusSinaisVitais(avaliacao: Avaliacao, agora: Date) {
     ultimoRegistro,
     condicaoGeral: formatarCondicaoGeralSsvv(ultimoSinalVital?.condicaoGeral),
     observacao: ultimoSinalVital?.observacao ?? null,
+    frequencia,
+    procedimentoStatus: "Realizado (Em dia)",
+    realizado,
   };
 }
 
@@ -352,6 +379,12 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
   >(null);
   const [condicaoGeralSsvv, setCondicaoGeralSsvv] =
     useState<CondicaoGeralSsvv>("SEM_ALTERACOES");
+  const [fcSsvv, setFcSsvv] = useState<number | "">("");
+  const [frSsvv, setFrSsvv] = useState<number | "">("");
+  const [tempSsvv, setTempSsvv] = useState<number | "">("");
+  const [spo2Ssvv, setSpo2Ssvv] = useState<number | "">("");
+  const [paSsvv, setPaSsvv] = useState("");
+  const [dorSsvv, setDorSsvv] = useState<number | "">("");
   const [observacaoSsvv, setObservacaoSsvv] = useState("");
 
   const opcoesAvaliador = useMemo(() => {
@@ -459,6 +492,12 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
   function abrirModalSsvv(avaliacaoId: number) {
     setModalSsvvAvaliacaoId(avaliacaoId);
     setCondicaoGeralSsvv("SEM_ALTERACOES");
+    setFcSsvv("");
+    setFrSsvv("");
+    setTempSsvv("");
+    setSpo2Ssvv("");
+    setPaSsvv("");
+    setDorSsvv("");
     setObservacaoSsvv("");
   }
 
@@ -478,6 +517,12 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
         modalSsvvAvaliacaoId,
         {
           condicaoGeral: condicaoGeralSsvv,
+          frequenciaCardiaca: fcSsvv === "" ? null : fcSsvv,
+          frequenciaRespiratoria: frSsvv === "" ? null : frSsvv,
+          temperatura: tempSsvv === "" ? null : tempSsvv,
+          saturacaoOxigenio: spo2Ssvv === "" ? null : spo2Ssvv,
+          pressaoArterial: paSsvv.trim() || null,
+          dor: dorSsvv === "" ? null : dorSsvv,
           observacao: observacaoSsvv.trim() || null,
         }
       );
@@ -538,6 +583,7 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
       render: (_, registro) => {
         const statusPews = obterStatusReavaliacao(registro, agora);
         const statusSsvv = obterStatusSinaisVitais(registro, agora);
+        const ultimoSinalVital = obterUltimoSinalVital(registro);
 
         return (
           <Space
@@ -571,20 +617,49 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
             <Popover
               title="Sinais vitais"
               content={
-                <Space direction="vertical" size={6}>
-                  <Typography.Text>{statusSsvv.detalhe}</Typography.Text>
-                  <Typography.Text type="secondary">
-                    Prazo: {statusSsvv.prazo}
+                <Space direction="vertical" size={10} style={{ maxWidth: 320 }}>
+                  <div>
+                    <Typography.Text strong>Frequência recomendada: </Typography.Text>
+                    <Tag color="blue">{statusSsvv.frequencia}</Tag>
+                  </div>
+                  <div>
+                    <Typography.Text strong>Procedimento: </Typography.Text>
+                    <Tag color={statusSsvv.realizado ? "success" : "warning"}>
+                      {statusSsvv.procedimentoStatus}
+                    </Tag>
+                  </div>
+                  <hr style={{ border: 0, borderTop: "1px solid #f0f0f0", margin: "4px 0" }} />
+                  <Typography.Text type="secondary">{statusSsvv.detalhe}</Typography.Text>
+                  <Typography.Text type="secondary" style={{ display: "block" }}>
+                    Prazo limite: {statusSsvv.prazo}
                   </Typography.Text>
-                  <Typography.Text type="secondary">
+                  
+                  {ultimoSinalVital && (
+                    <div style={{ marginTop: 4 }}>
+                      <Typography.Text strong style={{ display: "block", marginBottom: 4 }}>
+                        Últimos Sinais Vitais Aferidos:
+                      </Typography.Text>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "4px 8px" }}>
+                        <div><Typography.Text type="secondary">FC: </Typography.Text><Typography.Text strong>{ultimoSinalVital.frequenciaCardiaca !== null && ultimoSinalVital.frequenciaCardiaca !== undefined ? `${ultimoSinalVital.frequenciaCardiaca} bpm` : "-"}</Typography.Text></div>
+                        <div><Typography.Text type="secondary">FR: </Typography.Text><Typography.Text strong>{ultimoSinalVital.frequenciaRespiratoria !== null && ultimoSinalVital.frequenciaRespiratoria !== undefined ? `${ultimoSinalVital.frequenciaRespiratoria} irpm` : "-"}</Typography.Text></div>
+                        <div><Typography.Text type="secondary">Temp: </Typography.Text><Typography.Text strong>{ultimoSinalVital.temperatura !== null && ultimoSinalVital.temperatura !== undefined ? `${Number(ultimoSinalVital.temperatura).toFixed(1)} °C` : "-"}</Typography.Text></div>
+                        <div><Typography.Text type="secondary">SpO2: </Typography.Text><Typography.Text strong>{ultimoSinalVital.saturacaoOxigenio !== null && ultimoSinalVital.saturacaoOxigenio !== undefined ? `${ultimoSinalVital.saturacaoOxigenio}%` : "-"}</Typography.Text></div>
+                        <div><Typography.Text type="secondary">PA: </Typography.Text><Typography.Text strong>{ultimoSinalVital.pressaoArterial || "-"}</Typography.Text></div>
+                        <div><Typography.Text type="secondary">Dor: </Typography.Text><Typography.Text strong>{ultimoSinalVital.dor !== null && ultimoSinalVital.dor !== undefined ? `${ultimoSinalVital.dor}/10` : "-"}</Typography.Text></div>
+                      </div>
+                      <div style={{ marginTop: 6 }}>
+                        <Typography.Text type="secondary">Condição: </Typography.Text>
+                        <Typography.Text strong>{statusSsvv.condicaoGeral}</Typography.Text>
+                      </div>
+                    </div>
+                  )}
+
+                  <Typography.Text type="secondary" style={{ display: "block", fontSize: "11px", marginTop: 4 }}>
                     {statusSsvv.ultimoRegistro}
                   </Typography.Text>
-                  <Typography.Text type="secondary">
-                    Condição geral: {statusSsvv.condicaoGeral}
-                  </Typography.Text>
                   {statusSsvv.observacao ? (
-                    <Typography.Text type="secondary">
-                      Obs.: {statusSsvv.observacao}
+                    <Typography.Text type="secondary" style={{ display: "block" }}>
+                      Obs: {statusSsvv.observacao}
                     </Typography.Text>
                   ) : null}
                   <Button
@@ -592,7 +667,7 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
                     size="small"
                     loading={registrandoSsvvId === registro.id}
                     onClick={() => abrirModalSsvv(registro.id)}
-                    style={{ background: verde, alignSelf: "flex-start" }}
+                    style={{ background: verde, alignSelf: "flex-start", marginTop: 4 }}
                   >
                     Registrar SSVV
                   </Button>
@@ -821,30 +896,109 @@ export function PaginaInicio({ apenasMinhas = false }: PropsPaginaInicio) {
       }
       onCancel={() => setModalSsvvAvaliacaoId(null)}
       onOk={() => void registrarSinaisVitais()}
+      width={600}
     >
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
         <Typography.Text>
-          Informe a condição geral observada na aferição dos sinais vitais.
+          Preencha as informações de sinais vitais observadas na aferição do paciente.
         </Typography.Text>
-        <Radio.Group
-          value={condicaoGeralSsvv}
-          onChange={(evento) => setCondicaoGeralSsvv(evento.target.value)}
-        >
-          <Space direction="vertical">
-            <Radio value="SEM_ALTERACOES">Sem alterações</Radio>
-            <Radio value="ALTERACOES_OBSERVADAS">
-              Alterações observadas
-            </Radio>
-          </Space>
-        </Radio.Group>
-        <Input.TextArea
-          value={observacaoSsvv}
-          onChange={(evento) => setObservacaoSsvv(evento.target.value)}
-          placeholder="Observação opcional"
-          maxLength={500}
-          rows={3}
-          showCount
-        />
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Frequência Cardíaca (bpm)</Typography.Text>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              max={300}
+              value={fcSsvv === "" ? undefined : fcSsvv}
+              onChange={(value) => setFcSsvv(value ?? "")}
+              placeholder="Ex: 80"
+            />
+          </div>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Frequência Respiratória (irpm)</Typography.Text>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              max={150}
+              value={frSsvv === "" ? undefined : frSsvv}
+              onChange={(value) => setFrSsvv(value ?? "")}
+              placeholder="Ex: 24"
+            />
+          </div>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Temperatura corporal (°C)</Typography.Text>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={30}
+              max={45}
+              step={0.1}
+              value={tempSsvv === "" ? undefined : tempSsvv}
+              onChange={(value) => setTempSsvv(value ?? "")}
+              placeholder="Ex: 36.5"
+            />
+          </div>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Saturação de Oxigênio (SpO2 %)</Typography.Text>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              max={100}
+              value={spo2Ssvv === "" ? undefined : spo2Ssvv}
+              onChange={(value) => setSpo2Ssvv(value ?? "")}
+              placeholder="Ex: 98"
+            />
+          </div>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Pressão Arterial (mmHg)</Typography.Text>
+            <Input
+              style={{ width: "100%" }}
+              value={paSsvv}
+              onChange={(evento) => setPaSsvv(evento.target.value)}
+              placeholder="Ex: 120/80"
+            />
+          </div>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Escala de Dor (0 a 10)</Typography.Text>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              max={10}
+              value={dorSsvv === "" ? undefined : dorSsvv}
+              onChange={(value) => setDorSsvv(value ?? "")}
+              placeholder="Ex: 3"
+            />
+          </div>
+        </div>
+
+        <div>
+          <Typography.Text style={{ display: "block", marginBottom: 6, fontWeight: "500" }}>
+            Condição geral observada na aferição:
+          </Typography.Text>
+          <Radio.Group
+            value={condicaoGeralSsvv}
+            onChange={(evento) => setCondicaoGeralSsvv(evento.target.value)}
+          >
+            <Space direction="horizontal" size={16}>
+              <Radio value="SEM_ALTERACOES">Sem alterações</Radio>
+              <Radio value="ALTERACOES_OBSERVADAS">
+                Alterações observadas
+              </Radio>
+            </Space>
+          </Radio.Group>
+        </div>
+
+        <div>
+          <Typography.Text style={{ display: "block", marginBottom: 4 }}>Observações</Typography.Text>
+          <Input.TextArea
+            value={observacaoSsvv}
+            onChange={(evento) => setObservacaoSsvv(evento.target.value)}
+            placeholder="Observação opcional"
+            maxLength={500}
+            rows={3}
+            showCount
+          />
+        </div>
       </Space>
     </Modal>
     </>
