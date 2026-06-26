@@ -42,6 +42,12 @@ export type Avaliacao = CorpoCriarAvaliacao & {
     usuarioId?: number | null;
     usuarioNome?: string | null;
     condicaoGeral: "SEM_ALTERACOES" | "ALTERACOES_OBSERVADAS";
+    frequenciaCardiaca?: number | null;
+    frequenciaRespiratoria?: number | null;
+    temperatura?: number | null;
+    saturacaoOxigenio?: number | null;
+    pressaoArterial?: string | null;
+    dor?: number | null;
     observacao?: string | null;
     registradoEm: string;
   }[];
