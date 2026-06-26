@@ -5,9 +5,14 @@ import {
   Collapse,
   Descriptions,
   Empty,
+  Input,
+  InputNumber,
+  Modal,
   Popconfirm,
+  Radio,
   Space,
   Spin,
+  Table,
   Tag,
   Typography,
 } from "antd";
@@ -29,6 +34,7 @@ import {
   apiExcluirAvaliacao,
   apiExcluirAnexoAvaliacao,
   apiListarAvaliacoes,
+  apiRegistrarSinaisVitaisAvaliacao,
 } from "../api/avaliacaoServico";
 import { apiBuscarPacientePorId, apiListarPacientes } from "../api/pacienteServico";
 import { urlBaseApi } from "../api/requisicoes";
@@ -355,6 +361,16 @@ export function PaginaHistoricoPaciente() {
   const [carregando, setCarregando] = useState(false);
   const [avaliacaoParaAnexo, setAvaliacaoParaAnexo] = useState<number | null>(null);
   const [anexoCarregandoId, setAnexoCarregandoId] = useState<number | null>(null);
+  const [modalSsvvAvaliacaoId, setModalSsvvAvaliacaoId] = useState<number | null>(null);
+  const [registrandoSsvvId, setRegistrandoSsvvId] = useState<number | null>(null);
+  const [condicaoGeralSsvv, setCondicaoGeralSsvv] = useState<"SEM_ALTERACOES" | "ALTERACOES_OBSERVADAS">("SEM_ALTERACOES");
+  const [fcSsvv, setFcSsvv] = useState<number | "">("");
+  const [frSsvv, setFrSsvv] = useState<number | "">("");
+  const [tempSsvv, setTempSsvv] = useState<number | "">("");
+  const [spo2Ssvv, setSpo2Ssvv] = useState<number | "">("");
+  const [paSsvv, setPaSsvv] = useState("");
+  const [dorSsvv, setDorSsvv] = useState<number | "">("");
+  const [observacaoSsvv, setObservacaoSsvv] = useState("");
   const arquivoInputRef = useRef<HTMLInputElement>(null);
   const usuarioAdministrador = usuario?.funcao === CODIGO_FUNCAO_ADMINISTRADOR;
 
@@ -400,6 +416,57 @@ export function PaginaHistoricoPaciente() {
       setCarregando(false);
     }
   }, [idPaciente, message, nomeLegado, rotaPorId, token]);
+
+  function abrirModalSsvv(avaliacaoId: number) {
+    setModalSsvvAvaliacaoId(avaliacaoId);
+    setCondicaoGeralSsvv("SEM_ALTERACOES");
+    setFcSsvv("");
+    setFrSsvv("");
+    setTempSsvv("");
+    setSpo2Ssvv("");
+    setPaSsvv("");
+    setDorSsvv("");
+    setObservacaoSsvv("");
+  }
+
+  async function registrarSinaisVitais() {
+    if (!token) {
+      return;
+    }
+
+    if (!modalSsvvAvaliacaoId) {
+      return;
+    }
+
+    try {
+      setRegistrandoSsvvId(modalSsvvAvaliacaoId);
+      await apiRegistrarSinaisVitaisAvaliacao(
+        token,
+        modalSsvvAvaliacaoId,
+        {
+          condicaoGeral: condicaoGeralSsvv,
+          frequenciaCardiaca: fcSsvv === "" ? null : fcSsvv,
+          frequenciaRespiratoria: frSsvv === "" ? null : frSsvv,
+          temperatura: tempSsvv === "" ? null : tempSsvv,
+          saturacaoOxigenio: spo2Ssvv === "" ? null : spo2Ssvv,
+          pressaoArterial: paSsvv.trim() || null,
+          dor: dorSsvv === "" ? null : dorSsvv,
+          observacao: observacaoSsvv.trim() || null,
+        }
+      );
+      message.success("Sinais vitais registrados.");
+      setModalSsvvAvaliacaoId(null);
+      await carregarAvaliacoes();
+    } catch (e) {
+      message.error(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível registrar os sinais vitais."
+      );
+    } finally {
+      setRegistrandoSsvvId(null);
+    }
+  }
 
   useEffect(() => {
     void carregarAvaliacoes();
@@ -811,6 +878,95 @@ export function PaginaHistoricoPaciente() {
               },
             ]}
           />
+
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <Typography.Title level={5} style={{ margin: 0, color: verde }}>
+                Aferições de Sinais Vitais (SSVV)
+              </Typography.Title>
+              <Button
+                type="primary"
+                size="small"
+                icon={<FileAddOutlined />}
+                onClick={() => abrirModalSsvv(avaliacao.id)}
+                style={{ background: verde }}
+              >
+                Registrar SSVV
+              </Button>
+            </div>
+            {(!avaliacao.sinaisVitais || avaliacao.sinaisVitais.length === 0) ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Nenhuma aferição de sinais vitais registrada para esta avaliação." />
+            ) : (
+              <Table
+                size="small"
+                rowKey="id"
+                pagination={false}
+                dataSource={[...avaliacao.sinaisVitais].sort((a, b) => new Date(a.registradoEm).getTime() - new Date(b.registradoEm).getTime())}
+                columns={[
+                  {
+                    title: "Data/Hora",
+                    dataIndex: "registradoEm",
+                    key: "registradoEm",
+                    render: (val) => formatarDataHora(val),
+                  },
+                  {
+                    title: "Profissional",
+                    dataIndex: "usuarioNome",
+                    key: "usuarioNome",
+                    render: (val) => val || "Não identificado",
+                  },
+                  {
+                    title: "FC (bpm)",
+                    dataIndex: "frequenciaCardiaca",
+                    key: "frequenciaCardiaca",
+                    render: (val) => val ?? "-",
+                  },
+                  {
+                    title: "FR (irpm)",
+                    dataIndex: "frequenciaRespiratoria",
+                    key: "frequenciaRespiratoria",
+                    render: (val) => val ?? "-",
+                  },
+                  {
+                    title: "Temp (°C)",
+                    dataIndex: "temperatura",
+                    key: "temperatura",
+                    render: (val) => val !== null && val !== undefined ? `${Number(val).toFixed(1)} °C` : "-",
+                  },
+                  {
+                    title: "SpO2 (%)",
+                    dataIndex: "saturacaoOxigenio",
+                    key: "saturacaoOxigenio",
+                    render: (val) => val !== null && val !== undefined ? `${val}%` : "-",
+                  },
+                  {
+                    title: "PA (mmHg)",
+                    dataIndex: "pressaoArterial",
+                    key: "pressaoArterial",
+                    render: (val) => val || "-",
+                  },
+                  {
+                    title: "Dor",
+                    dataIndex: "dor",
+                    key: "dor",
+                    render: (val) => val !== null && val !== undefined ? `${val}/10` : "-",
+                  },
+                  {
+                    title: "Condição Geral",
+                    dataIndex: "condicaoGeral",
+                    key: "condicaoGeral",
+                    render: (val) => val === "SEM_ALTERACOES" ? "Sem alterações" : "Alterações observadas",
+                  },
+                  {
+                    title: "Observação",
+                    dataIndex: "observacao",
+                    key: "observacao",
+                    render: (val) => val || "-",
+                  },
+                ]}
+              />
+            )}
+          </div>
         </Space>
       ),
     };
@@ -951,6 +1107,122 @@ export function PaginaHistoricoPaciente() {
           )}
         </Space>
       </main>
+    <Modal
+      title="Registrar sinais vitais"
+      open={modalSsvvAvaliacaoId !== null}
+      okText="Registrar"
+      cancelText="Cancelar"
+      confirmLoading={
+        modalSsvvAvaliacaoId !== null &&
+        registrandoSsvvId === modalSsvvAvaliacaoId
+      }
+      onCancel={() => setModalSsvvAvaliacaoId(null)}
+      onOk={() => void registrarSinaisVitais()}
+      width={600}
+    >
+      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Typography.Text>
+          Preencha as informações de sinais vitais observadas na aferição do paciente.
+        </Typography.Text>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Frequência Cardíaca (bpm)</Typography.Text>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              max={300}
+              value={fcSsvv === "" ? undefined : fcSsvv}
+              onChange={(value) => setFcSsvv(value ?? "")}
+              placeholder="Ex: 80"
+            />
+          </div>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Frequência Respiratória (irpm)</Typography.Text>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              max={150}
+              value={frSsvv === "" ? undefined : frSsvv}
+              onChange={(value) => setFrSsvv(value ?? "")}
+              placeholder="Ex: 24"
+            />
+          </div>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Temperatura corporal (°C)</Typography.Text>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={30}
+              max={45}
+              step={0.1}
+              value={tempSsvv === "" ? undefined : tempSsvv}
+              onChange={(value) => setTempSsvv(value ?? "")}
+              placeholder="Ex: 36.5"
+            />
+          </div>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Saturação de Oxigênio (SpO2 %)</Typography.Text>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              max={100}
+              value={spo2Ssvv === "" ? undefined : spo2Ssvv}
+              onChange={(value) => setSpo2Ssvv(value ?? "")}
+              placeholder="Ex: 98"
+            />
+          </div>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Pressão Arterial (mmHg)</Typography.Text>
+            <Input
+              style={{ width: "100%" }}
+              value={paSsvv}
+              onChange={(evento) => setPaSsvv(evento.target.value)}
+              placeholder="Ex: 120/80"
+            />
+          </div>
+          <div>
+            <Typography.Text style={{ display: "block", marginBottom: 4 }}>Escala de Dor (0 a 10)</Typography.Text>
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              max={10}
+              value={dorSsvv === "" ? undefined : dorSsvv}
+              onChange={(value) => setDorSsvv(value ?? "")}
+              placeholder="Ex: 3"
+            />
+          </div>
+        </div>
+
+        <div>
+          <Typography.Text style={{ display: "block", marginBottom: 6, fontWeight: "500" }}>
+            Condição geral observada na aferição:
+          </Typography.Text>
+          <Radio.Group
+            value={condicaoGeralSsvv}
+            onChange={(evento) => setCondicaoGeralSsvv(evento.target.value)}
+          >
+            <Space direction="horizontal" size={16}>
+              <Radio value="SEM_ALTERACOES">Sem alterações</Radio>
+              <Radio value="ALTERACOES_OBSERVADAS">
+                Alterações observadas
+              </Radio>
+            </Space>
+          </Radio.Group>
+        </div>
+
+        <div>
+          <Typography.Text style={{ display: "block", marginBottom: 4 }}>Observações</Typography.Text>
+          <Input.TextArea
+            value={observacaoSsvv}
+            onChange={(evento) => setObservacaoSsvv(evento.target.value)}
+            placeholder="Observação opcional"
+            maxLength={500}
+            rows={3}
+            showCount
+          />
+        </div>
+      </Space>
+    </Modal>
     </div>
   );
 }
