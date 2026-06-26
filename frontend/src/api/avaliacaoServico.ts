@@ -68,6 +68,12 @@ export async function apiRegistrarSinaisVitaisAvaliacao(
   avaliacaoId: number,
   corpo: {
     condicaoGeral: "SEM_ALTERACOES" | "ALTERACOES_OBSERVADAS";
+    frequenciaCardiaca?: number | null;
+    frequenciaRespiratoria?: number | null;
+    temperatura?: number | null;
+    saturacaoOxigenio?: number | null;
+    pressaoArterial?: string | null;
+    dor?: number | null;
     observacao?: string | null;
   }
 ) {

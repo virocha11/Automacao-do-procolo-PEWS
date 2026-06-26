@@ -145,7 +145,7 @@ function construirDadosAvaliacao(
     leito: textoOuNulo(body.leito),
     diagnostico: textoOuNulo(body.diagnostico),
     dih: textoOuNulo(body.dih),
-    ...(incluirDataAvaliacao ? { dataAvaliacao: new Date() } : {}),
+    dataAvaliacao: incluirDataAvaliacao ? new Date() : null,
     avaliacaoRespiratoria: textoOuNulo(body.avaliacaoRespiratoria),
     pontuacaoRespiratoria: pontuacao(body.pontuacaoRespiratoria),
     avaliacaoCardiovascular: textoOuNulo(body.avaliacaoCardiovascular),
@@ -448,12 +448,25 @@ export async function registrarSinaisVitaisAvaliacao(req: Request, res: Response
       return res.status(400).json({ erro: "Condição geral inválida." });
     }
 
+    const frequenciaCardiaca = req.body?.frequenciaCardiaca !== undefined && req.body?.frequenciaCardiaca !== null && req.body?.frequenciaCardiaca !== "" ? Number(req.body.frequenciaCardiaca) : null;
+    const frequenciaRespiratoria = req.body?.frequenciaRespiratoria !== undefined && req.body?.frequenciaRespiratoria !== null && req.body?.frequenciaRespiratoria !== "" ? Number(req.body.frequenciaRespiratoria) : null;
+    const temperatura = req.body?.temperatura !== undefined && req.body?.temperatura !== null && req.body?.temperatura !== "" ? Number(req.body.temperatura) : null;
+    const saturacaoOxigenio = req.body?.saturacaoOxigenio !== undefined && req.body?.saturacaoOxigenio !== null && req.body?.saturacaoOxigenio !== "" ? Number(req.body.saturacaoOxigenio) : null;
+    const pressaoArterial = req.body?.pressaoArterial !== undefined && req.body?.pressaoArterial !== null && req.body?.pressaoArterial !== "" ? String(req.body.pressaoArterial) : null;
+    const dor = req.body?.dor !== undefined && req.body?.dor !== null && req.body?.dor !== "" ? Number(req.body.dor) : null;
+
     const controle = await criarControleSinaisVitais({
       avaliacaoId: id,
       pacienteId: avaliacao.pacienteId,
       usuarioId: req.usuarioAutenticado?.id,
       usuarioNome: req.usuarioAutenticado?.nome,
       condicaoGeral,
+      frequenciaCardiaca,
+      frequenciaRespiratoria,
+      temperatura,
+      saturacaoOxigenio,
+      pressaoArterial,
+      dor,
       observacao: textoOuNulo(req.body?.observacao),
     });
 

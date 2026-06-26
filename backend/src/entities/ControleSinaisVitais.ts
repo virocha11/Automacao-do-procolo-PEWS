@@ -39,6 +39,24 @@ export class ControleSinaisVitais {
   @Column({ type: "varchar" })
   condicaoGeral!: CondicaoGeralSinaisVitais;
 
+  @Column({ type: "int", nullable: true })
+  frequenciaCardiaca!: number | null;
+
+  @Column({ type: "int", nullable: true })
+  frequenciaRespiratoria!: number | null;
+
+  @Column({ type: "float", nullable: true })
+  temperatura!: number | null;
+
+  @Column({ type: "int", nullable: true })
+  saturacaoOxigenio!: number | null;
+
+  @Column({ type: "varchar", nullable: true })
+  pressaoArterial!: string | null;
+
+  @Column({ type: "int", nullable: true })
+  dor!: number | null;
+
   @Column({ type: "text", nullable: true })
   observacao!: string | null;
 
